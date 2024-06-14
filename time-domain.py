@@ -9,7 +9,7 @@ sig = waveform(5.8e9, 80e6, 500e-6, 1024)
 capture_period = 5
 Fs = 3.84e9 #Sample Rate
 
-data = np.load(r'C:\Users\jster\Downloads\lab_test_4.npy')
+data = np.load(r'/home/uceejpw/May_lab_tests/Test 4 - Active with half length of test 3/test_2/active_deramp_output_0_2.npy')
 
 baseband = data[0::2] + 1j*data[1::2]
 baseband = baseband.reshape((int(sig.prf*capture_period), -1))
