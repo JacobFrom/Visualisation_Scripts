@@ -6,12 +6,12 @@ from dsp_functions import get_RT
 
 #The data is the output of the active mode capture
 
-data = np.load(r'/home/uceejpw/Trial_2_lab_tests/Active_tests/2x10m_cable_160bw/active_deramp_output_0_7.npy')
+data = np.load(r'E:\Trial_2_Day_2_tests\Run4\trial_2_test_2\active_data\active_deramp_output_0_2.npy')
 
 
-sig = waveform(2.44e9, 160e6, 500e-6, 1024)
+sig = waveform(2.44e9, 80e6, 500e-6, 1024)
 
-capture_period = 8
+capture_period = 5
 Fs = 3.84e9 #Sample Rate
 
 #In order to pass the parameters to the function, we need to define the baseband signal.

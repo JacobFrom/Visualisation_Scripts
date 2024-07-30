@@ -4,5 +4,5 @@ class waveform(object):
         self.chirp_bandwidth = chirp_bandwidth
         self.chirp_period = chirp_period
         self.prf = prf
-
+        self.range_bins = None
         
