@@ -8,10 +8,10 @@ from classes import waveform
 signal = waveform(2.44e9, 80e6, 500e-6, 1024)
 # Define sample rate, capture period and number of pulses
 Fs = 3.84e9
-capture_period = 10
+capture_period = 15
 
 # Load in deramped data from ARESTOR
-data = np.load(r'E:\Trial_2_Day_2_tests\Run6\trial_2_test_6\active_data\active_deramp_output_0_6.npy')
+data = np.load(r'E:\Trial_2_Day_2_tests\Run8\trial_2_test_8\active_data\active_deramp_output_0_8.npy')
 
 iq_data = data[0::2] + 1j*data[1::2] #Convert the data to complex numbers to make a baseband array.
 deramped_data = iq_data.reshape((int(signal.prf*capture_period)), 940).T #Reshape the baseband array to the correct dimensions.
