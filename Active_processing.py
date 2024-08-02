@@ -8,13 +8,13 @@ from classes import waveform
 signal = waveform(2.44e9, 80e6, 500e-6, 1024)
 # Define sample rate, capture period and number of pulses
 Fs = 3.84e9
-capture_period = 5
+capture_period = 15
 
 # Load in deramped data from ARESTOR
-data = np.load(r'E:\Trial_2_Day_2_tests\Run4\trial_2_test_2\active_data\active_deramp_output_0_2.npy')
+data = np.load(r'E:\Trial_2_Day_2_tests\Run8\trial_2_test_8\active_data\active_deramp_output_0_8.npy')
 
 iq_data = data[0::2] + 1j*data[1::2] #Convert the data to complex numbers to make a baseband array.
-deramped_data = iq_data.reshape((int(signal.prf*capture_period)), 940).T #Reshape the baseband array to the correct dimensions.
+deramped_data = iq_data.reshape((int(signal.prf*capture_period)), -1).T #Reshape the baseband array to the correct dimensions.
 #This operation is typically used to organize the samples of a signal into a 2D array where each row corresponds to
 # one pulse of the signal. This can be useful for further processing of the signal.
 # Apply windowing function
@@ -36,13 +36,12 @@ print("Positive BF Min Value:", PBF_min_value)
 
 #MTI Filtering
 num_pulses = fft_data.shape[1] #Number of pulses
-MTI_data = np.zeros_like(positive_beat_freqs) #Create empty array for MTI
-signal.range_bins = np.shape(MTI_data[0]) #Assign number of range bins to the signal object
-for i in range(1, num_pulses): #Iterate through pulses missing first pulse as nothing to subtract from
-    MTI_data[:, i] = positive_beat_freqs[:, i] - positive_beat_freqs[:, i - 1]
-print("MTI Data Shape:", np.shape(MTI_data)) # Verify shape of MTI data
-#Three Pulse MTI
-h = np.array([1, -2, 1]) #Define filter coefficients
+#MTI_data = np.zeros_like(positive_beat_freqs) #Create empty array for MTI
+signal.range_bins = np.shape(positive_beat_freqs[0]) #Assign number of range bins to the signal object
+#for i in range(num_pulses - 1): #Iterate through pulses missing first pulse as nothing to subtract from
+#   MTI_data[:, i] = positive_beat_freqs[:, i + 1] - positive_beat_freqs[:, i]
+#print("MTI Data Shape:", np.shape(MTI_data)) # Verify shape of MTI data
+
 
 """
 #Attempt at IIR filter:
@@ -70,14 +69,52 @@ time_axis = np.linspace(0, capture_period, num_pulses)
 MTI_time_axis = np.linspace(0, capture_period, num_pulses)
 MTI_plot_flag = False
 RTI_plot_flag = True
+bin_plot_flag = False
+
+#Masking of interfering pulses
+
+# Calculate the power of each pulse
+pulse_power = np.sum(np.abs(positive_beat_freqs) ** 2, axis=0)
+
+#Identify pulses with power above a certain threshold
+threshold = np.mean(pulse_power) + 10 * np.std(pulse_power)  #Threshold based on plots
+interfering_pulses = pulse_power > threshold
+
+#Create a mask to exclude the identified pulses
+mask = ~interfering_pulses
+
+# Apply the mask to create a new array without interfering pulses
+cleaned_positive_beat_freqs = positive_beat_freqs[:, mask]
+
+#Masking of close in range bins
+num_excluded_bins = 15
+
+mask_bins = np.arange(cleaned_positive_beat_freqs.shape[0]) >= num_excluded_bins
+
+masked_positive_beat_freqs = cleaned_positive_beat_freqs[mask_bins, :]
+print("Shape of masked positive beat freqs:", masked_positive_beat_freqs.shape)
+range_axis_masked = ranges[:(ranges.shape[0] // 2) - num_excluded_bins]
+time_axis_masked = np.linspace(0, capture_period, masked_positive_beat_freqs.shape[1])
+
+#Masked data MTI:
+MTI_freqs = masked_positive_beat_freqs
+MTI_data = np.zeros_like(masked_positive_beat_freqs)
+for i in range(masked_positive_beat_freqs.shape[1] - 4):
+    MTI_data[:, i] = (
+            MTI_freqs[:, i + 4]    #x(n+4)
+            - 4 * MTI_freqs[:, i + 3] #-4x(n+3)
+            + 6 * MTI_freqs[:, i + 2] #6x(n+2)
+            - 4 * MTI_freqs[:, i + 1] #-4x(n+1)
+            + MTI_freqs[:, i])      #x(n)
+
 
 if RTI_plot_flag:
     #RTI Plot
-    RTI_plot = np.transpose(20 * np.log10(np.abs(positive_beat_freqs) / np.max(np.abs(positive_beat_freqs))))
+    RTI_plot = np.transpose(20 * np.log10(np.abs(masked_positive_beat_freqs) / np.max(np.abs(masked_positive_beat_freqs))))
     print("RTI Plot Shape:", RTI_plot.shape)
     plt.figure()
-    plt.pcolormesh(range_axis, time_axis, RTI_plot, vmin=-60, vmax=0)
-    plt.xlim([0, 80])
+    plt.pcolormesh(range_axis_masked, time_axis_masked, RTI_plot, vmin=-30, vmax=-10)
+    plt.xlim([20, 100])
     plt.xlabel('Range [m]')
     plt.ylabel('Time [s]')
     plt.colorbar()
@@ -92,13 +129,22 @@ if MTI_plot_flag:
     MTI_plot = np.transpose(20 * np.log10(np.abs(MTI_data) / np.max(np.abs(MTI_data))))
     print("MTI Plot Shape:", MTI_plot.shape)
     plt.figure()
-    plt.pcolormesh(range_axis, MTI_time_axis, MTI_plot, vmin=-30, vmax=0)
+    plt.pcolormesh(range_axis_masked, time_axis_masked, MTI_plot, vmin=-40, vmax=0)
     plt.xlim([0, 120])
     plt.xlabel('Range [m]')
     plt.ylabel('Time [s]')
     plt.colorbar()
     plt.show()
-
-
+range_bin_idx = 100
+range_bin_data = positive_beat_freqs[range_bin_idx, :]
+power_range_bin = 20 * np.log10(np.abs(range_bin_data) / np.max(np.abs(range_bin_data)))
+if bin_plot_flag:
+    plt.figure()
+    plt.plot(power_range_bin)
+    plt.xlabel('Pulse Number')
+    plt.ylabel('Power [dB]')
+    plt.title(f'Power Plot for Range bin {range_bin_idx}')
+    plt.grid(True)
+    plt.show()
 
 
