@@ -74,7 +74,7 @@ range_bin_size = ranges[1]
 time_axis = np.linspace(0, capture_period, num_pulses)
 MTI_time_axis = np.linspace(0, capture_period, num_pulses)
 MTI_plot_flag = False
-RTI_plot_flag = True
+RTI_plot_flag = False
 bin_plot_flag = False
 
 #Masking of interfering pulses
@@ -158,20 +158,35 @@ C = sp.constants.speed_of_light #Speed of light in m/s
 cpi = 0.5 #Coherent Processing Interval in seconds
 cpi_overlap = 0.8 #Overlap between CPIs
 doppler_window = 'hann' #Window type for Doppler FFT
-velocity_conversion = C*(((1/C)/(signal.centre_freq/C))) #Conversion factor for velocity
+lambda_c = C / signal.centre_freq #Wavelength in m
 zero_padding = 1    #Zero padding factor for Doppler FFT 1 = none, 2 = 100% zero padding
-max_range = 1000 #Maximum range for plotting
+max_range = 100 #Maximum range for plotting
 
 number_cpi, pulses_per_cpi, range_doppler_slices = rangeDopplerslice(positive_beat_freqs, cpi, signal.prf, cpi_overlap, 
 zero_padding, doppler_window)
 
 #Plotting Range Doppler Slices
 
-doppler_bins = np.arange(1, len(range_doppler_slices[0]) + 1)
-doppler_axis = np.linspace(-signal.prf/2, signal.prf/2, len(doppler_bins))
-doppler_velocity_axis = doppler_axis * velocity_conversion
-doppler_range_axis = np.arange(1, len(mask_bins) + 1)
+range_doppler_slice_flag = True
+slice_index = 120
+slice_to_plot = range_doppler_slices[slice_index]
+doppler_axis = np.linspace(-signal.prf/2, signal.prf/2, slice_to_plot.shape[1])
+doppler_velocity_axis = doppler_axis * lambda_c / 2
+doppler_range_axis = np.linspace(0, max_range, positive_beat_freqs.shape[0])
 
+if range_doppler_slice_flag:
+    plt.figure(figsize=(12, 8))
+    plt.title("Range-Doppler Slice")
+    plt.xlabel("Range bin number")
+    plt.ylabel("Doppler Velocity [m/s]")
+    plt.xlim([0, 30])
+    plt.ylim([-20, 20])
+    plt.imshow(20 * np.log10(np.abs(slice_to_plot)), aspect='auto', cmap='jet', extent=[doppler_range_axis[0], doppler_range_axis[-1], doppler_velocity_axis[0], doppler_velocity_axis[-1]])
+    plt.colorbar(label='Power (dB)')
+    plt.show()
+
+
+"""
 os.makedirs(directory, exist_ok=True)
 
 video_filename = "active_range-Doppler_video1.avi"
@@ -180,11 +195,12 @@ video_path = os.path.join(directory, video_filename)
 #Create the video
 video_title ="Active Range-Doppler Video"
 dynamic_range = 60
-max_range_video = 120
-max_doppler = 40
+max_range_video = 100
+max_doppler = 20
 frame_rate = 1/(capture_period / number_cpi)
 
 create_video(range_doppler_slices, frame_rate, doppler_range_axis, max_range_video, -doppler_velocity_axis, max_doppler,
              dynamic_range, video_path, video_title)
 print("Video created successfully")
 
+"""
