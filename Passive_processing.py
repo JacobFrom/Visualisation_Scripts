@@ -37,7 +37,7 @@ else:
     ref_iq[:] = raw_ref_data[0::2] + 1j * raw_ref_data[1::2]
     surv_iq[:] = raw_surv_data[0::2] + 1j * raw_surv_data[1::2]
 
-
+print("Successfully loaded data")
 """
 ref_iq = np.memmap(ref_data_mmap_file, dtype=np.complex128, mode='w+', shape=(raw_ref_data.size,))
 surv_iq = np.memmap(surv_data_mmap_file, dtype=np.complex128, mode='w+', shape=(raw_surv_data.size,))
@@ -49,7 +49,7 @@ surv_iq[:] = raw_surv_data[0::2] + 1j * raw_surv_data[1::2]
 """
 
 #Create a false target at a given range in the surveillance channel:
-shift_factor = 40 #How many samples to shift the target by
+shift_factor = 20 #How many samples to shift the target by
 passive_sample_rate = Fs / (decimation_block * decimation_c_c) #Calculate the true sample rate of passive data after decimation
 range_bin_size = (1/passive_sample_rate) * (sp.constants.c / 2) #Calculate the size of a single range bin, in metres
 print("Expected target range = ", shift_factor * range_bin_size, " m")
@@ -72,11 +72,13 @@ if os.path.exists(seg_ref_mmap_file) and os.path.exists(seg_surv_mmap_file):
     seg_ref_channel = np.memmap(seg_ref_mmap_file, dtype=np.complex128, mode='r+')
     seg_surv_channel = np.memmap(seg_surv_mmap_file, dtype=np.complex128, mode='r+')
 else:
-    seg_ref_channel = np.memmap('seg_ref_channel.dat', dtype=np.complex128, mode='w+', shape=(segment_size, int(ref_iq.shape[0] / segment_size)))
-    seg_surv_channel = np.memmap('seg_surv_channel.dat', dtype=np.complex128, mode='w+', shape=(segment_size, int(surv_shifted.shape[0] / segment_size)))
+    seg_ref_channel = np.memmap(seg_ref_mmap_file, dtype=np.complex128, mode='w+', shape=(segment_size, int(ref_iq.shape[0] / segment_size)))
+    seg_surv_channel = np.memmap(seg_surv_mmap_file, dtype=np.complex128, mode='w+', shape=(segment_size, int(surv_shifted.shape[0] / segment_size)))
     # Reshape the reference and surveillance channel data into segments
     seg_ref_channel[:] = np.reshape(ref_iq, (segment_size, int(ref_iq.shape[0] / segment_size)))
     seg_surv_channel[:] = np.reshape(surv_shifted, (segment_size, int(surv_shifted.shape[0] / segment_size)))
+
+print("Successfully reshaped data")
 
 cross_correlation_size = int(segment_size * (seg_percent / 100)) #Calculate the size of the cross correlation
 
@@ -131,7 +133,7 @@ number_cpi, pulses_per_cpi, range_doppler_slices = rangeDopplerslice(cc_matrix, 
 zero_padding, doppler_window)
 
 range_doppler_slice_flag = True
-slice_index = 50
+slice_index = 18
 slice_to_plot = range_doppler_slices[slice_index]
 doppler_axis = np.linspace(-prf/2, prf/2, slice_to_plot.shape[1])
 doppler_velocity_axis = doppler_axis * lambda_c / 2
@@ -143,7 +145,7 @@ if range_doppler_slice_flag:
     plt.xlabel("Range bin number")
     plt.ylabel("Doppler Velocity [m/s]")
     plt.xlim([0, 100])
-    plt.ylim([-30, 30])
+    plt.ylim([-50, 50])
     plt.imshow(20 * np.log10(np.abs(slice_to_plot)), aspect='auto', cmap='jet', extent=[doppler_range_axis[0], doppler_range_axis[-1], doppler_velocity_axis[0], doppler_velocity_axis[-1]])
     plt.colorbar(label='Power (dB)')
     plt.show()
