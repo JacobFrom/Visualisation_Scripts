@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from classes import waveform
-import cv2
 from dsp_functions import rangeDopplerslice, create_video
 
 # Define waveform parameters
@@ -74,44 +73,48 @@ range_bin_size = ranges[1]
 time_axis = np.linspace(0, capture_period, num_pulses)
 MTI_time_axis = np.linspace(0, capture_period, num_pulses)
 MTI_plot_flag = False
-RTI_plot_flag = False
+RTI_plot_flag = True
 bin_plot_flag = False
+mask_flag = False
+range_doppler_flag = False
+micro_doppler_flag = False
 
-#Masking of interfering pulses
+if mask_flag:
+    #Masking of interfering pulses
 
-# Calculate the power of each pulse
-pulse_power = np.sum(np.abs(positive_beat_freqs) ** 2, axis=0)
+    # Calculate the power of each pulse
+    pulse_power = np.sum(np.abs(positive_beat_freqs) ** 2, axis=0)
 
-#Identify pulses with power above a certain threshold
-threshold = np.mean(pulse_power) + 10 * np.std(pulse_power)  #Threshold based on plots
-interfering_pulses = pulse_power > threshold
+    #Identify pulses with power above a certain threshold
+    threshold = np.mean(pulse_power) + 10 * np.std(pulse_power)  #Threshold based on plots
+    interfering_pulses = pulse_power > threshold
 
-#Create a mask to exclude the identified pulses
-mask = ~interfering_pulses
+    #Create a mask to exclude the identified pulses
+    mask = ~interfering_pulses
 
-# Apply the mask to create a new array without interfering pulses
-cleaned_positive_beat_freqs = positive_beat_freqs[:, mask]
+    # Apply the mask to create a new array without interfering pulses
+    cleaned_positive_beat_freqs = positive_beat_freqs[:, mask]
 
-#Masking of close in range bins
-num_excluded_bins = 15
+    #Masking of close in range bins
+    num_excluded_bins = 15
 
-mask_bins = np.arange(cleaned_positive_beat_freqs.shape[0]) >= num_excluded_bins
+    mask_bins = np.arange(cleaned_positive_beat_freqs.shape[0]) >= num_excluded_bins
 
-masked_positive_beat_freqs = cleaned_positive_beat_freqs[mask_bins, :]
-print("Shape of masked positive beat freqs:", masked_positive_beat_freqs.shape)
-range_axis_masked = ranges[:(ranges.shape[0] // 2) - num_excluded_bins]
-time_axis_masked = np.linspace(0, capture_period, masked_positive_beat_freqs.shape[1])
+    masked_positive_beat_freqs = cleaned_positive_beat_freqs[mask_bins, :]
+    print("Shape of masked positive beat freqs:", masked_positive_beat_freqs.shape)
+    range_axis_masked = ranges[:(ranges.shape[0] // 2) - num_excluded_bins]
+    time_axis_masked = np.linspace(0, capture_period, masked_positive_beat_freqs.shape[1])
 
-#Masked data MTI:
-MTI_freqs = masked_positive_beat_freqs
-MTI_data = np.zeros_like(masked_positive_beat_freqs)
-for i in range(masked_positive_beat_freqs.shape[1] - 4):
-    MTI_data[:, i] = (
-            MTI_freqs[:, i + 4]    #x(n+4)
-            - 4 * MTI_freqs[:, i + 3] #-4x(n+3)
-            + 6 * MTI_freqs[:, i + 2] #6x(n+2)
-            - 4 * MTI_freqs[:, i + 1] #-4x(n+1)
-            + MTI_freqs[:, i])      #x(n)
+    #Masked data MTI:
+    MTI_freqs = masked_positive_beat_freqs
+    MTI_data = np.zeros_like(masked_positive_beat_freqs)
+    for i in range(masked_positive_beat_freqs.shape[1] - 4):
+        MTI_data[:, i] = (
+                MTI_freqs[:, i + 4]    #x(n+4)
+                - 4 * MTI_freqs[:, i + 3] #-4x(n+3)
+                + 6 * MTI_freqs[:, i + 2] #6x(n+2)
+                - 4 * MTI_freqs[:, i + 1] #-4x(n+1)
+                + MTI_freqs[:, i])      #x(n)
 
 
 if RTI_plot_flag:
@@ -153,28 +156,28 @@ if bin_plot_flag:
     plt.grid(True)
     plt.show()
 
-#Range Doppler Processing:
-C = sp.constants.speed_of_light #Speed of light in m/s
-cpi = 0.5 #Coherent Processing Interval in seconds
-cpi_overlap = 0.8 #Overlap between CPIs
-doppler_window = 'hann' #Window type for Doppler FFT
-lambda_c = C / signal.centre_freq #Wavelength in m
-zero_padding = 1    #Zero padding factor for Doppler FFT 1 = none, 2 = 100% zero padding
-max_range = 100 #Maximum range for plotting
 
-number_cpi, pulses_per_cpi, range_doppler_slices = rangeDopplerslice(positive_beat_freqs, cpi, signal.prf, cpi_overlap, 
-zero_padding, doppler_window)
+if range_doppler_flag:
+    #Range Doppler Processing:
+    C = sp.constants.speed_of_light #Speed of light in m/s
+    cpi = 0.5 #Coherent Processing Interval in seconds
+    cpi_overlap = 0.8 #Overlap between CPIs
+    doppler_window = 'hann' #Window type for Doppler FFT
+    lambda_c = C / signal.centre_freq #Wavelength in m
+    zero_padding = 1    #Zero padding factor for Doppler FFT 1 = none, 2 = 100% zero padding
+    max_range = 100 #Maximum range for plotting
 
-#Plotting Range Doppler Slices
+    number_cpi, pulses_per_cpi, range_doppler_slices = rangeDopplerslice(positive_beat_freqs, cpi, signal.prf, cpi_overlap,
+    zero_padding, doppler_window)
 
-range_doppler_slice_flag = True
-slice_index = 120
-slice_to_plot = range_doppler_slices[slice_index]
-doppler_axis = np.linspace(-signal.prf/2, signal.prf/2, slice_to_plot.shape[1])
-doppler_velocity_axis = doppler_axis * lambda_c / 2
-doppler_range_axis = np.linspace(0, max_range, positive_beat_freqs.shape[0])
+range_doppler_slice_flag = False
 
 if range_doppler_slice_flag:
+    slice_index = 120
+    slice_to_plot = range_doppler_slices[slice_index]
+    doppler_axis = np.linspace(-signal.prf / 2, signal.prf / 2, slice_to_plot.shape[1])
+    doppler_velocity_axis = doppler_axis * lambda_c / 2
+    doppler_range_axis = np.linspace(0, max_range, positive_beat_freqs.shape[0])
     plt.figure(figsize=(12, 8))
     plt.title("Range-Doppler Slice")
     plt.xlabel("Range bin number")
@@ -185,7 +188,8 @@ if range_doppler_slice_flag:
     plt.colorbar(label='Power (dB)')
     plt.show()
 
-
+if micro_doppler_flag:
+    
 """
 os.makedirs(directory, exist_ok=True)
 
