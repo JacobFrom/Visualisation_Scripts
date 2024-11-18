@@ -47,6 +47,7 @@ print("Shape of range bins:", ranges.shape)
 
 range_axis = ranges[:ranges.shape[0] // 2]
 range_bin_size = ranges[1]
+print(range_bin_size)
 time_axis = np.linspace(0, capture_period, num_pulses)
 
 #To generate the RTI plot, change flag value to True
@@ -55,10 +56,10 @@ RTI_plot_flag = False
 
 if RTI_plot_flag:
     #RTI Plot
-    RTI_plot = np.transpose(20 * np.log10(np.abs(masked_positive_beat_freqs) / np.max(np.abs(masked_positive_beat_freqs))))
+    RTI_plot = np.transpose(20 * np.log10(np.abs(positive_beat_freqs) / np.max(np.abs(positive_beat_freqs))))
     print("RTI Plot Shape:", RTI_plot.shape)
     plt.figure()
-    plt.pcolormesh(range_axis_masked, time_axis_masked, RTI_plot, vmin=-30, vmax=-10)
+    plt.pcolormesh(range_axis, time_axis, RTI_plot, vmin=-30, vmax=-10)
     plt.xlim([20, 100])
     plt.xlabel('Range [m]')
     plt.ylabel('Time [s]')
@@ -70,6 +71,22 @@ if RTI_plot_flag:
 micro_doppler_flag = True
 
 if micro_doppler_flag:
-    #First stage is to define range bins of interest
-    start_range_bin = 0
-    end_range_bin = 10
+    #First stage is to define duration and range bin/bins of interest
+    test_length = 10 #Define the duration of the test in seconds
+    selected_range_bin = 15 #Select the range bin that corresponds to where the movement under analysis occured
+
+    #Next we define the parameters for the Short Time Fourier Transform:
+    stft_data = positive_beat_freqs[selected_range_bin, signal.prf * test_length] #Define the matrix to perform the stft along
+    cpi = 0.5 #Define the coherent processing interval in seconds
+    cpi_overlap = cpi / 2  #Define the overlap between each coherent processing interval, standard is 50% cpi
+
+    pulses_per_cpi = int(cpi * signal.prf) #Define the number of pulses per cpi, this will be used for the windowing function
+    window_func = sp.get_window('hann', pulses_per_cpi) #Define the windowing function to be applied to the data
+    stft_data = stft_data * window_func #Apply the windowing function to the data
+
+
+
+
+
+
+
