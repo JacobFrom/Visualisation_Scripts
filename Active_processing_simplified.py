@@ -47,6 +47,7 @@ print("Shape of range bins:", ranges.shape)
 
 range_axis = ranges[:ranges.shape[0] // 2]
 range_bin_size = ranges[1]
+print(range_bin_size)
 time_axis = np.linspace(0, capture_period, num_pulses)
 
 #To generate the RTI plot, change flag value to True
@@ -55,10 +56,10 @@ RTI_plot_flag = False
 
 if RTI_plot_flag:
     #RTI Plot
-    RTI_plot = np.transpose(20 * np.log10(np.abs(masked_positive_beat_freqs) / np.max(np.abs(masked_positive_beat_freqs))))
+    RTI_plot = np.transpose(20 * np.log10(np.abs(positive_beat_freqs) / np.max(np.abs(positive_beat_freqs))))
     print("RTI Plot Shape:", RTI_plot.shape)
     plt.figure()
-    plt.pcolormesh(range_axis_masked, time_axis_masked, RTI_plot, vmin=-30, vmax=-10)
+    plt.pcolormesh(range_axis, time_axis, RTI_plot, vmin=-30, vmax=-10)
     plt.xlim([20, 100])
     plt.xlabel('Range [m]')
     plt.ylabel('Time [s]')
@@ -70,6 +71,43 @@ if RTI_plot_flag:
 micro_doppler_flag = True
 
 if micro_doppler_flag:
-    #First stage is to define range bins of interest
-    start_range_bin = 0
-    end_range_bin = 10
+    #First stage is to define duration and range bin/bins of interest
+    selected_range_bin = 15 #Select the range bin that corresponds to where the movement under analysis occured
+    stft_data = positive_beat_freqs[selected_range_bin, :] #This assigns the stft_data variable to the range bin of choice and contains all pulses
+
+    #Next we define the parameters for the coherent processing intervals:
+    cpi = 0.5 #Define the coherent processing interval in seconds
+    cpi_overlap = cpi / 2  #Define the overlap between each coherent processing interval, standard is 50% cpi
+    pulses_per_cpi = int(cpi * signal.prf)  # Define the number of pulses per cpi, this will be used for the windowing function
+    cpi_slide = int(np.round(pulses_per_cpi * (1-cpi_overlap))) #This will define the number of pulses to slide the window by
+    window_func = sp.get_window('hann', pulses_per_cpi) #Define the windowing function to be applied to the data
+    zero_padding = 0 #Define the factor for zero padding the Doppler FFT
+    num_cpis = int(np.ceil((positive_beat_freqs.shape[1] - pulses_per_cpi) / cpi_slide)) #Calculate the number of cpis to be processed
+    print("Number of CPIs:", num_cpis)
+    doppler_bins = pulses_per_cpi * zero_padding #Define the number of Doppler bins
+    if doppler_bins % 2 == 0:
+        doppler_bins += 1 #Ensure the number of Doppler bins is odd
+
+    #Finally, define the order of operations for the STFT
+    micro_doppler_slices = np.zeros[]
+    for i in range(num_cpis):
+        start = i * cpi_slide
+        end = start + pulses_per_cpi
+        cpi_data = stft_data[:, start:end]
+        windowed_data = cpi_data * window_func
+        fft_data = np.fft.fft(windowed_data, axis=1)
+        micro_doppler_slices[i] = fft_data.T
+
+        #Now we can plot the micro-doppler slices
+        plt.figure()
+        plt.pcolormesh(20 * log10(np.abs(micro_doppler_slices)), vmin=-30, vmax=0)
+        plt.xlabel('Pulse Number')
+        plt.ylabel('Doppler Frequency')
+        plt.colorbar()
+        plt.show()
+
+
+
+
+
+
