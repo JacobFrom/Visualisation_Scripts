@@ -72,18 +72,39 @@ micro_doppler_flag = True
 
 if micro_doppler_flag:
     #First stage is to define duration and range bin/bins of interest
-    test_length = 10 #Define the duration of the test in seconds
     selected_range_bin = 15 #Select the range bin that corresponds to where the movement under analysis occured
+    stft_data = positive_beat_freqs[selected_range_bin, :] #This assigns the stft_data variable to the range bin of choice and contains all pulses
 
-    #Next we define the parameters for the Short Time Fourier Transform:
-    stft_data = positive_beat_freqs[selected_range_bin, signal.prf * test_length] #Define the matrix to perform the stft along
+    #Next we define the parameters for the coherent processing intervals:
     cpi = 0.5 #Define the coherent processing interval in seconds
     cpi_overlap = cpi / 2  #Define the overlap between each coherent processing interval, standard is 50% cpi
-
-    pulses_per_cpi = int(cpi * signal.prf) #Define the number of pulses per cpi, this will be used for the windowing function
+    pulses_per_cpi = int(cpi * signal.prf)  # Define the number of pulses per cpi, this will be used for the windowing function
+    cpi_slide = int(np.round(pulses_per_cpi * (1-cpi_overlap))) #This will define the number of pulses to slide the window by
     window_func = sp.get_window('hann', pulses_per_cpi) #Define the windowing function to be applied to the data
-    stft_data = stft_data * window_func #Apply the windowing function to the data
+    zero_padding = 0 #Define the factor for zero padding the Doppler FFT
+    num_cpis = int(np.ceil((positive_beat_freqs.shape[1] - pulses_per_cpi) / cpi_slide)) #Calculate the number of cpis to be processed
+    print("Number of CPIs:", num_cpis)
+    doppler_bins = pulses_per_cpi * zero_padding #Define the number of Doppler bins
+    if doppler_bins % 2 == 0:
+        doppler_bins += 1 #Ensure the number of Doppler bins is odd
 
+    #Finally, define the order of operations for the STFT
+    micro_doppler_slices = np.zeros[]
+    for i in range(num_cpis):
+        start = i * cpi_slide
+        end = start + pulses_per_cpi
+        cpi_data = stft_data[:, start:end]
+        windowed_data = cpi_data * window_func
+        fft_data = np.fft.fft(windowed_data, axis=1)
+        micro_doppler_slices[i] = fft_data.T
+
+        #Now we can plot the micro-doppler slices
+        plt.figure()
+        plt.pcolormesh(20 * log10(np.abs(micro_doppler_slices)), vmin=-30, vmax=0)
+        plt.xlabel('Pulse Number')
+        plt.ylabel('Doppler Frequency')
+        plt.colorbar()
+        plt.show()
 
 
 
