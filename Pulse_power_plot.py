@@ -2,16 +2,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 from classes import waveform
 # Define waveform parameters
-signal = waveform(2.44e9, 80e6, 500e-6, 1024)
+signal = waveform(5.8e9, 80e6, 500e-6, 1024)
 # Define sample rate, capture period and number of pulses
 Fs = 3.84e9
-capture_period = 15
+capture_period = 10
 
 # Load in deramped data from ARESTOR
-data = np.load(r'E:\Trial_2_Day_2_tests\Run8\trial_2_test_8\active_data\active_deramp_output_0_8.npy')
+data = np.load(r'D:\Data\C_band_testing\test_1.npy')
 
 iq_data = data[0::2] + 1j*data[1::2] #Convert the data to complex numbers to make a baseband array.
-deramped_data = iq_data.reshape((int(signal.prf*capture_period)), -1).T #Reshape the baseband array to the correct dimensions.
+
+#deramped_data = iq_data.reshape((int(signal.prf*capture_period)), -1).T #Reshape the baseband array to the correct dimensions.
+
+deramped_data = iq_data.T
 #This operation is typically used to organize the samples of a signal into a 2D array where each row corresponds to
 # one pulse of the signal. This can be useful for further processing of the signal.
 # Apply windowing function
@@ -33,7 +36,7 @@ positive_beat_freqs = fft_data[:num_rows // 2, :]
 pulse_power = np.sum(np.abs(positive_beat_freqs) ** 2, axis=0)
 
 # Identify pulses with power above a certain threshold
-threshold = np.mean(pulse_power) + 13 * np.std(pulse_power)  #Threshold based on plots
+threshold = np.mean(pulse_power) + 5 * np.std(pulse_power)  #Threshold based on plots
 interfering_pulses = pulse_power > threshold
 
 # Step 3: Create a mask to exclude the identified pulses

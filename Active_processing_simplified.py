@@ -7,19 +7,21 @@ from classes import waveform
 from dsp_functions import rangeDopplerslice, create_video
 
 # Define waveform parameters
-signal = waveform(2.44e9, 80e6, 500e-6, 1024)
+signal = waveform(5.8e9, 80e6, 500e-6, 1024)
 # Define sample rate, capture period and number of pulses
 Fs = 3.84e9
-capture_period = 15
+capture_period = 10
 
 # Load in deramped data from ARESTOR
-directory = r'G:\Trial_2_Day_2_tests\Run8\trial_2_test_8\active_data'
+directory = r'D:\Data\C_band_testing'
 
 #data = np.load(r'E:\Trial_2_Day_2_tests\Run8\trial_2_test_8\active_data\active_deramp_output_0_8.npy')
 
-data = np.load(directory + r'\active_deramp_output_0_8.npy')
-iq_data = data[0::2] + 1j*data[1::2] #Convert the data to complex numbers to make a baseband array.
-deramped_data = iq_data.reshape((int(signal.prf*capture_period)), -1).T #Reshape the baseband array to the correct dimensions.
+data = np.load(directory + r'\test_1.npy')
+iq_data = data[:, 0::2] + 1j*data[:, 1::2] #Convert the data to complex numbers to make a baseband array.
+#deramped_data = iq_data.reshape((int(signal.prf*capture_period)), -1).T
+
+deramped_data = iq_data.T#Reshape the baseband array to the correct dimensions.
 #This operation is typically used to organize the samples of a signal into a 2D array where each row corresponds to
 # one pulse of the signal. This can be useful for further processing of the signal.
 # Apply windowing function
@@ -52,15 +54,15 @@ time_axis = np.linspace(0, capture_period, num_pulses)
 
 #To generate the RTI plot, change flag value to True
 
-RTI_plot_flag = False
+RTI_plot_flag = True
 
 if RTI_plot_flag:
     #RTI Plot
     RTI_plot = np.transpose(20 * np.log10(np.abs(positive_beat_freqs) / np.max(np.abs(positive_beat_freqs))))
     print("RTI Plot Shape:", RTI_plot.shape)
     plt.figure()
-    plt.pcolormesh(range_axis, time_axis, RTI_plot, vmin=-30, vmax=-10)
-    plt.xlim([20, 100])
+    plt.pcolormesh(range_axis, time_axis, RTI_plot, vmin=-50, vmax=0)
+    plt.xlim([0, 50])
     plt.xlabel('Range [m]')
     plt.ylabel('Time [s]')
     plt.colorbar()
@@ -68,14 +70,14 @@ if RTI_plot_flag:
 
 
 
-micro_doppler_flag = True
+micro_doppler_flag = False
 
 if micro_doppler_flag:
     #First stage is to define duration and range bin/bins of interest
     selected_range_bin = 15 #Select the range bin that corresponds to where the movement under analysis occured
     stft_data = positive_beat_freqs[selected_range_bin, :] #This assigns the stft_data variable to the range bin of choice and contains all pulses
 
-    #Next we define the parameters for the coherent processing intervals:
+    #Next we define the parameters for -the coherent processing intervals:
     cpi = 0.5 #Define the coherent processing interval in seconds
     cpi_overlap = cpi / 2  #Define the overlap between each coherent processing interval, standard is 50% cpi
     pulses_per_cpi = int(cpi * signal.prf)  # Define the number of pulses per cpi, this will be used for the windowing function
@@ -89,18 +91,18 @@ if micro_doppler_flag:
         doppler_bins += 1 #Ensure the number of Doppler bins is odd
 
     #Finally, define the order of operations for the STFT
-    micro_doppler_slices = np.zeros[]
+    #micro_doppler_slices = np.zeros[]
     for i in range(num_cpis):
         start = i * cpi_slide
         end = start + pulses_per_cpi
         cpi_data = stft_data[:, start:end]
         windowed_data = cpi_data * window_func
         fft_data = np.fft.fft(windowed_data, axis=1)
-        micro_doppler_slices[i] = fft_data.T
+        #micro_doppler_slices[i] = fft_data.T
 
         #Now we can plot the micro-doppler slices
         plt.figure()
-        plt.pcolormesh(20 * log10(np.abs(micro_doppler_slices)), vmin=-30, vmax=0)
+        #plt.pcolormesh(20 * np.log10(np.abs(micro_doppler_slices)), vmin=-30, vmax=0)
         plt.xlabel('Pulse Number')
         plt.ylabel('Doppler Frequency')
         plt.colorbar()
