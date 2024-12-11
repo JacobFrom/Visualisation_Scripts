@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 
-arr = np.load((r'/home/uceejpw/Trial_2_lab_tests/DVB-T_tests/test2_3s_ref_capture/passive_ref_output_0_3.npy'), mmap_mode='r')
+arr = np.load((r'/home/uceejpw/Trial_2_Field_tests/passive_surv_output_0_7.npy'), mmap_mode='r')
 
 I = arr[0:480000:2]
 plt.plot(I)

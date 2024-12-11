@@ -10,18 +10,18 @@ from dsp_functions import rangeDopplerslice, create_video
 signal = waveform(5.8e9, 80e6, 500e-6, 1024)
 # Define sample rate, capture period and number of pulses
 Fs = 3.84e9
-capture_period = 10
+capture_period = 20
 
 # Load in deramped data from ARESTOR
-directory = r'D:\Data\C_band_testing'
+directory = r'/home/uceejpw/C_band_testing/Data/C_band_testing_day4'
 
 #data = np.load(r'E:\Trial_2_Day_2_tests\Run8\trial_2_test_8\active_data\active_deramp_output_0_8.npy')
 
-data = np.load(directory + r'\test_1.npy')
+data = np.load(directory + r'/2.npy')
 iq_data = data[:, 0::2] + 1j*data[:, 1::2] #Convert the data to complex numbers to make a baseband array.
 #deramped_data = iq_data.reshape((int(signal.prf*capture_period)), -1).T
 
-deramped_data = iq_data.T#Reshape the baseband array to the correct dimensions.
+deramped_data = iq_data.T #Reshape the baseband array to the correct dimensions.
 #This operation is typically used to organize the samples of a signal into a 2D array where each row corresponds to
 # one pulse of the signal. This can be useful for further processing of the signal.
 # Apply windowing function
@@ -33,7 +33,7 @@ fft_data = np.fft.fft(windowed_data, axis=0)
 # Keep only positive beat frequencies
 num_rows = fft_data.shape[0] #Number of frequency bins
 positive_beat_freqs = fft_data[:num_rows // 2, :]
-
+print("Shape of positive_beat_freqs:", positive_beat_freqs.shape)
 #First stage of pre processing is complete. Now we perform some sanity checks and organise the data for further processing.
 
 num_pulses = fft_data.shape[1] #Number of pulses
