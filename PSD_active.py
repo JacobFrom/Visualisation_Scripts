@@ -6,25 +6,31 @@ mpl.use('Qt5Agg')
 
 #The data is the output of the active mode capture
 
-data = np.load(r'D:\Data\C_band_testing\test_1.npy')
+data = np.load(r'/home/uceejpw/C_band_testing/Data/C_band_testing_ota/jacob_waving_moving.npy')
 
 #Below are the parameters of the waveform
 
 prf = 1024 #Pulse Repitition Frequency
-capture_period = 10
-max_range = 100
+capture_period = 20
+max_range = 50
 Fs = 3.84e9 #Sample Rate
 chirp_bandwidth = 80e6
 chirp_period = 500e-6
 centre_freq = 5800e6
-data = data[0::2] + 1j*data[1::2]
-N = 1024*9 #Number of samples for fft
+reshaped_flag = True
+if reshaped_flag:
+    data = data[:, 0::2] + 1j*data[:, 1::2]
+else:
+    data = data[0::2] + 1j*data[1::2]
 
-fft_data = data[0:N] #Take the first N samples for the fft
+seconds_of_interest = 5
+N = prf * seconds_of_interest#Number of samples for fft
 
-fft_data = fft_data * np.hamming(len(fft_data)) #Apply hamming window function to the data
+fft_data = data[0:N, :] #Take the first N pulses for the fft
+window = np.hamming(fft_data.shape[0]) #Create a hamming window function
+windowed_data = fft_data * window[:, np.newaxis] #Apply hamming window function to the data
 
-PSD = np.abs(np.fft.fft(fft_data))**2 / (N * (Fs)) #Calculate the Power Spectral Density
+PSD = np.abs(np.fft.fft(windowed_data))**2 / (N * (Fs)) #Calculate the Power Spectral Density
 
 PSD_dB = 10.0*np.log10(PSD) #Convert to dB
 
