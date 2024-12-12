@@ -52,7 +52,7 @@ signal.range_bins = np.shape(positive_beat_freqs[0]) #Assign number of range bin
 """
 #Attempt at IIR filter:
 filter_order = 10
-nyquist_rate = Fs / 2
+nyquist_rate = Fs / 2blank_1.npy
 normalised_cutoff = 0.021
 cutoff_frequency = normalised_cutoff * nyquist_rate
 b, a = sp.butter(filter_order, cutoff_frequency / nyquist_rate, btype = 'high')

@@ -9,7 +9,7 @@ sig = waveform(5800e6, 80e6, 500e-6, 1024)
 capture_period = 20
 Fs = 3.84e9 #Sample Rate
 
-data = np.load(r'/home/uceejpw/C_band_testing/Data/C_band_testing_ota/jacob_waving_moving.npy')
+data = np.load(r'/home/jacob/Documents/C_Band_Data/C_band_patch/blank_2.npy')
 
 reshaped_flag = True
 if reshaped_flag:
