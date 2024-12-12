@@ -14,11 +14,11 @@ capture_period = 20
 prf = 1024
 centre_freq = 5.8e9
 # Load in deramped data from ARESTOR
-directory = r'/home/jacob/Documents/Micro_Doppler_Projects/micro_doppler_project_yaoqi/test_2'
+directory = r'/home/jacob/Documents/C_Band_Data/C_band_testing_ota'
 
 #data = np.load(r'E:\Trial_2_Day_2_tests\Run8\trial_2_test_8\active_data\active_deramp_output_0_8.npy')
 
-data = np.load(directory + r'/gate_analysis_2.npy')
+data = np.load(directory + r'/fan_moved_antenna.npy')
 iq_data = data[:, 0::2] + 1j*data[:, 1::2] #Convert the data to complex numbers to make a baseband array.
 #deramped_data = iq_data.reshape((int(signal.prf*capture_period)), -1).T
 
@@ -59,7 +59,7 @@ time_axis = np.linspace(0, capture_period, num_pulses)
 
 #To generate the RTI plot, change flag value to True
 
-RTI_plot_flag = True
+RTI_plot_flag = False
 
 if RTI_plot_flag:
     #RTI Plot
@@ -75,7 +75,7 @@ if RTI_plot_flag:
 
 
 
-micro_doppler_flag = False
+micro_doppler_flag = True
 
 if micro_doppler_flag:
     #First stage is to define duration and range bin/bins of interest
