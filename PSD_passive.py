@@ -6,12 +6,12 @@ mpl.use('Qt5Agg')
 
 #The data is the output of the active mode capture
 
-data = np.load(r'/home/uceejpw/Trial_2_Day_2_tests/Run2/passive_data/passive_surv_output_0_2.npy')
+data = np.load(r'E:\loki_testing_day_1\passive_data_test_2_half_sec\passive_ref_output_0_2.npy')
 
 #Below are the parameters of the waveform
 
 prf = 1024 #Pulse Repitition Frequency
-capture_period = 1
+capture_period = 0.5
 max_range = 100
 Fs = 3.84e9 #Sample Rate
 chirp_bandwidth = 80e6

@@ -10,15 +10,15 @@ from scipy.signal import get_window
 signal = waveform(5.8e9, 80e6, 500e-6, 1024)
 # Define sample rate, capture period and number of pulses
 Fs = 3.84e9
-capture_period = 20
+capture_period = 5
 prf = 1024
-centre_freq = 5.8e9
+centre_freq = 2.44e9
 # Load in deramped data from ARESTOR
-directory = r'/home/jacob/Documents/C_Band_Data/C_band_testing_ota'
+directory = r'E:\loki_testing_day_1'
 
 #data = np.load(r'E:\Trial_2_Day_2_tests\Run8\trial_2_test_8\active_data\active_deramp_output_0_8.npy')
 
-data = np.load(directory + r'/fan_moved_antenna.npy')
+data = np.load(directory + r'\s_band_test_1\active_deramp_output.npy')
 iq_data = data[:, 0::2] + 1j*data[:, 1::2] #Convert the data to complex numbers to make a baseband array.
 #deramped_data = iq_data.reshape((int(signal.prf*capture_period)), -1).T
 
@@ -59,7 +59,7 @@ time_axis = np.linspace(0, capture_period, num_pulses)
 
 #To generate the RTI plot, change flag value to True
 
-RTI_plot_flag = False
+RTI_plot_flag = True
 
 if RTI_plot_flag:
     #RTI Plot
@@ -75,11 +75,11 @@ if RTI_plot_flag:
 
 
 
-micro_doppler_flag = True
+micro_doppler_flag = False
 
 if micro_doppler_flag:
     #First stage is to define duration and range bin/bins of interest
-    selected_range_bin = 5 #Select the range bin that corresponds to where the movement under analysis occured
+    selected_range_bin = 4 #Select the range bin that corresponds to where the movement under analysis occured
     stft_data = positive_beat_freqs[selected_range_bin, :] #This assigns the stft_data variable to the range bin of choice and contains all pulses
     print("Shape of STFT Data:", stft_data.shape)
 
