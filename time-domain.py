@@ -4,14 +4,17 @@ import matplotlib as mp
 import matplotlib.pyplot as plt
 
 
+passive_flag = True
+
+if passive_flag:
 sig = waveform(5800e6, 80e6, 500e-6, 1024)
 
-capture_period = 20
+capture_period = 5
 Fs = 3.84e9 #Sample Rate
 
-data = np.load(r'/home/jacob/Documents/C_Band_Data/C_band_patch/blank_2.npy')
+data = np.load(r'/media/uceejpw/External_SSD_JF/Loki_v2_testing_day_2/passive_data_test_3/passive_ref_output.npy')
 
-reshaped_flag = True
+reshaped_flag = False
 if reshaped_flag:
     baseband = data[:, 0::2] + 1j * data[:, 1::2]
 else:
