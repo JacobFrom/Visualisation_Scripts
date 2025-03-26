@@ -10,15 +10,15 @@ from scipy.signal import get_window
 signal = waveform(5.8e9, 80e6, 500e-6, 1024)
 # Define sample rate, capture period and number of pulses
 Fs = 3.84e9
-capture_period = 5
+capture_period = 1
 prf = 1024
 centre_freq = 2.44e9
 # Load in deramped data from ARESTOR
-directory = r'E:\loki_testing_day_1'
+directory = r'/media/uceejpw/External_SSD_JF/Loki_v2_testing_day_1'
 
 #data = np.load(r'E:\Trial_2_Day_2_tests\Run8\trial_2_test_8\active_data\active_deramp_output_0_8.npy')
 
-data = np.load(directory + r'\s_band_test_1\active_deramp_output.npy')
+data = np.load(directory + r'/s_band_test_1/active_deramp_output.npy')
 iq_data = data[:, 0::2] + 1j*data[:, 1::2] #Convert the data to complex numbers to make a baseband array.
 #deramped_data = iq_data.reshape((int(signal.prf*capture_period)), -1).T
 

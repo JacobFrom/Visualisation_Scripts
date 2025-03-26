@@ -9,7 +9,7 @@ sig = waveform(5800e6, 80e6, 500e-6, 1024)
 capture_period = 20
 Fs = 3.84e9 #Sample Rate
 
-data = np.load(r'D:\ARESTOR_DATA\C_band_testing_day4\1.npy')
+data = np.load(r'/home/jacob/Documents/C_Band_Data/C_band_patch/blank_2.npy')
 
 reshaped_flag = True
 if reshaped_flag:
