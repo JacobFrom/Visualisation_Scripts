@@ -6,13 +6,13 @@ mpl.use('Qt5Agg')
 
 #The data is the output of the active mode capture
 
-data = np.load(r'E:\loki_testing_day_1\s_band_test_1\active_deramp_output.npy')
+data = np.load(r'/media/uceejpw/External_SSD_JF/archery_trial_preliminary_tests/active_test_5/active_deramp_output.npy')
 
 #Below are the parameters of the waveform
 
 prf = 1024 #Pulse Repitition Frequency
-capture_period = 5
-max_range = 50
+capture_period = 10
+max_range = 100
 Fs = 3.84e9 #Sample Rate
 chirp_bandwidth = 80e6
 chirp_period = 500e-6

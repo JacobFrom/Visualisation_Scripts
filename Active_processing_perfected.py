@@ -10,15 +10,18 @@ from scipy.signal import get_window
 signal = waveform(5.8e9, 80e6, 500e-6, 1024)
 # Define sample rate, capture period and number of pulses
 Fs = 3.84e9
-capture_period = 1
+capture_period = 30
 prf = 1024
-centre_freq = 2.44e9
+centre_freq = 5.8e9
 # Load in deramped data from ARESTOR
-directory = r'/media/uceejpw/External_SSD_JF/Loki_v2_testing_day_1'
 
-#data = np.load(r'E:\Trial_2_Day_2_tests\Run8\trial_2_test_8\active_data\active_deramp_output_0_8.npy')
+#directory = r'/media/uceejpw/External_SSD_JF/run_13_c_4x'
 
-data = np.load(directory + r'/s_band_test_1/active_deramp_output.npy')
+directory = r'/media/uceejpw/External_SSD_JF/archery_trial_preliminary_tests_rob_run'
+
+data = np.load(directory + r'/active_test_6/6.npy')
+#data = np.load(directory + r'/active_test_1/active_deramp_output.npy')
+
 iq_data = data[:, 0::2] + 1j*data[:, 1::2] #Convert the data to complex numbers to make a baseband array.
 #deramped_data = iq_data.reshape((int(signal.prf*capture_period)), -1).T
 
@@ -67,7 +70,7 @@ if RTI_plot_flag:
     print("RTI Plot Shape:", RTI_plot.shape)
     plt.figure()
     plt.pcolormesh(range_axis, time_axis, RTI_plot, vmin=-50, vmax=0)
-    plt.xlim([0, 50])
+    plt.xlim([0, 120])
     plt.xlabel('Range [m]')
     plt.ylabel('Time [s]')
     plt.colorbar()

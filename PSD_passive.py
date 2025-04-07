@@ -6,7 +6,7 @@ mpl.use('Qt5Agg')
 
 #The data is the output of the active mode capture
 
-data = np.load(r'/media/uceejpw/External_SSD_JF/Loki_v2_testing_day_3/passive_data_test_4/passive_ref_output.npy')
+data = np.load(r'/media/uceejpw/External_SSD_JF/hybrid_calib_4x_c/passive_data_test_2/passive_ref_output.npy')
 
 #Below are the parameters of the waveform
 
@@ -16,17 +16,17 @@ tile_decimation = 8
 block_decimation = 4
 total_decimation = tile_decimation * block_decimation
 
-capture_period = 5
+capture_period = 10
 
 Fs = 3.84e9 #Sample Rate
 total_samples = (Fs / total_decimation) * capture_period
 
-centre_freq = 545e6
+centre_freq = 510e6
 
 data = data[0::2] + 1j*data[1::2]
 
-N = 200000*1024 #Number of samples for fft
-end = N + 1000*1024
+N = 0 #Number of samples for fft
+end = N + 100000*1024
 
 fft_data = data[N:end] #Take the first N samples for the fft
 
