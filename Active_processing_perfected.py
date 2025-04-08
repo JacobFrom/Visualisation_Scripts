@@ -4,15 +4,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from classes import waveform
-from scipy.signal import get_window
+from scipy.signal import get_window, chirp
 
 # Define waveform parameters
 signal = waveform(5.8e9, 80e6, 500e-6, 1024)
 # Define sample rate, capture period and number of pulses
+
+# Below are the parameters of the waveform
+
+centre_freq = 5.8e9 #active centre frequency
+bandwidth = 80e6 #chirp bandwidth
+chirp_period = 500e-6 #chirp length
+prf = 1024  # Pulse Repitition Frequency
+
 Fs = 3.84e9
-capture_period = 30
-prf = 1024
-centre_freq = 5.8e9
+capture_period = 20
+
 # Load in deramped data from ARESTOR
 
 #directory = r'/media/uceejpw/External_SSD_JF/run_13_c_4x'
