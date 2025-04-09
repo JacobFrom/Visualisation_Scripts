@@ -6,8 +6,8 @@ import matplotlib as mpl
 import scipy.signal as signal
 import imageio
 
-
-directory = r'G:\trial_3_data\run_7\active_test_1'
+experiment_codename = 'run_7'
+directory = fr'G:\trial_3_data\{experiment_codename}\active_test_1'
 
 data = np.load(directory + r'\1.npy')
 
