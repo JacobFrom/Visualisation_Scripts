@@ -9,6 +9,7 @@ import imageio
 experiment_codename = 'run_7'
 directory = fr'G:\trial_3_data\{experiment_codename}\active_test_1'
 
+
 data = np.load(directory + r'\1.npy')
 
 print(data.shape)
@@ -20,7 +21,7 @@ s_band = 2.44e9 #active centre frequency
 c_band = 5.8e9
 
 c = 3e8
-centre_freq = s_band #active centre frequency
+centre_freq = c_band #active centre frequency
 bandwidth = 80e6 #chirp bandwidth
 chirp_period = 500e-6 #chirp length
 prf = 1024  # Pulse Repitition Frequency
@@ -180,17 +181,19 @@ if rd_processing_flag:
     wavelength = c / centre_freq #Calculate the wavelength in metres
     velocity_axis = (doppler_axis * wavelength) / 2 #Calculate the velocity axis in m/s
     print(f"Velocity range (m/s): {velocity_axis[0]:.2f} m/s to {velocity_axis[-1]:.2f} m/s") #Here the :.2f formats the float to 2 decimal places
-    #Step 6, create the plot
+    #Step 6, create the plot in imshow
     plt.figure()
     plt.imshow(rd_plot, aspect='auto', origin="lower", extent=[range_axis[0], range_axis[-1], velocity_axis[0], velocity_axis[-1]], vmin=-100, vmax=0)
+    #or plot in colormesh, but imshow seems to be a lot faster and better honestly
+    #plt.pcolormesh(range_axis, velocity_axis, rd_plot, vmin=-100, vmax=0)
     plt.xlabel('Range [m]')
     plt.ylabel('Velocity [m/s]')
     plt.colorbar(label = 'Magnitude [dB]')
     plt.title('Range-Doppler Spectogram Plot')
-    plt.xlim([0, 100])
-    plt.ylim([-25, 25])
-    #plt.show()
-    plt.close()
+    plt.xlim([0, 80])
+    plt.ylim([-13.24, 13.24])
+    plt.show()
+    #plt.close()
 
 
 
