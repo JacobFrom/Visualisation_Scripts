@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import scipy.signal as signal
 import matplotlib.animation as animation
+from scipy.ndimage import median_filter
+
+
 experiment_codename = 'run_7'
 directory = fr'G:\trial_3_data\{experiment_codename}\active_test_1'
 
@@ -230,6 +233,19 @@ if rd_processing_flag:
     print(f"Finished processing. Number of slices processed: {len(rd_slices_list)}")
     #now lets use matplotlib animation
 
+    # #here we attempt some filtering on the list
+    #
+    # processed_slices = []
+    # filter_size = 3
+    #
+    # for i, rd_slice in enumerate(rd_slices_list):
+    #     # Apply median filter to the slice
+    #     filtered_slice = median_filter(rd_slice, size=(filter_size))
+    #     processed_slices.append(filtered_slice)
+    #
+    # print(f"Finished filtering. Number of slices processed: {len(processed_slices)}")
+
+
     FPS = 1/((capture_period/number_cpi))  # Frames per second for the output video
     VIDEO_FILENAME = fr'D:\ARESTOR_DATA\trial_3_rd_videos\{experiment_codename}\rd_video.mp4'  # Output video filename
     COLOR_VMIN = -80  # Min value for the color scale (dB) - adjust as needed
@@ -240,7 +256,10 @@ if rd_processing_flag:
     fig, ax = plt.subplots(figsize=(10, 6))
 
     # Initial plot setup using the first frame
+
     initial_data = rd_slices_list[0]
+    #initial_data = processed_slices[0]
+
     im = ax.imshow(initial_data,
                     aspect='auto',
                     origin='lower',
@@ -264,22 +283,40 @@ if rd_processing_flag:
 
 # --- Update Function for Animation ---
 def update(frame_num):
-    current_rd_slice = rd_slices_list[frame_num]
+
+    #current_rd_slice = rd_slices_list[frame_num]
+    #current_rd_slice = processed_slices[frame_num]
+    #current_rd_slice = processed_slices[frame_num].copy()
+    current_rd_slice = rd_slices_list[frame_num].copy()
+
+    noise_threshold = -60
+    # Apply noise thresholding
+    current_rd_slice[current_rd_slice < noise_threshold] = COLOR_VMIN
+
     im.set_data(current_rd_slice)  # Update image data
 
     # Update title
     start_time_sec = (frame_num * cpi_stride) / prf
+
     current_title = f'{base_title}\nFrame: {frame_num + 1}/{len(rd_slices_list)}, Time ≈ {start_time_sec:.2f} s'
+    #current_title = f'{base_title}\nFrame: {frame_num + 1}/{len(processed_slices)}, Time ≈ {start_time_sec:.2f} s'
+
     title_text.set_text(current_title)
 
     return [im, title_text]  # Return updated artists
 
 
 # --- Create and Save Animation ---
-print(f"Creating animation with {len(rd_slices_list)} frames...")
+
+(f"Creating animation with {len(rd_slices_list)} frames...")
+#print(f"Creating animation with {len(processed_slices)} frames...")
+
 ani = animation.FuncAnimation(fig,
                               update,
+
                               frames=len(rd_slices_list),
+                              #frames=len(processed_slices),
+
                               interval=1000 / FPS,  # ms delay
                               blit=True,  # Use blitting for efficiency
                               repeat=False)
