@@ -4,11 +4,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import scipy.signal as signal
-import imageio
-
+import matplotlib.animation as animation
 experiment_codename = 'run_7'
 directory = fr'G:\trial_3_data\{experiment_codename}\active_test_1'
 
+
+os.makedirs(fr'D:\ARESTOR_DATA\trial_3_rd_videos\{experiment_codename}', exist_ok=True)
 
 data = np.load(directory + r'\1.npy')
 
@@ -161,40 +162,128 @@ if MIT_plot_flag:
 rd_processing_flag = True
 
 if rd_processing_flag:
-    #step 1, fft along pulse dimension to get range doppler information
-    rd_matrix = np.fft.fft(positive_beat_frequencies, axis=0) #Perform FFT along the pulse dimension
-    print("Shape of rd_matrix:", rd_matrix.shape)
-    #step 2, create a range doppler matrix, axes 0 now represents doppler information across whole capture for each range bin
-    rd_matrix = np.fft.fftshift(rd_matrix, axes=0) #Shift the zero frequency component to the center of the spectrum
-    print("Shape of rd_matrix after shift:", rd_matrix.shape)
-    #Step 3, convert to db scale and normalise
-    rd_plot = (20 * np.log10(np.abs(rd_matrix) / np.max(np.abs(rd_matrix))))
-    #Step 4, create doppler axis, first in frequency, then convert to velocity
+    # #step 1, fft along pulse dimension to get range doppler information
+    # rd_matrix = np.fft.fft(positive_beat_frequencies, axis=0) #Perform FFT along the pulse dimension
+    # print("Shape of rd_matrix:", rd_matrix.shape)
+    # #step 2, create a range doppler matrix, axes 0 now represents doppler information across whole capture for each range bin
+    # rd_matrix = np.fft.fftshift(rd_matrix, axes=0) #Shift the zero frequency component to the center of the spectrum
+    # print("Shape of rd_matrix after shift:", rd_matrix.shape)
+    # #Step 3, convert to db scale and normalise
+    # rd_plot = (20 * np.log10(np.abs(rd_matrix) / np.max(np.abs(rd_matrix))))
+    # #Step 4, create doppler axis, first in frequency, then convert to velocity
     pulse_interval = 1 / prf #Calculate the pulse interval in seconds
     #print("Pulse Interval:", pulse_interval)
-    doppler_axis_unshifted = np.fft.fftfreq(num_pulses, d=pulse_interval) #Calculate the doppler axis in Hz
-    doppler_axis = np.fft.fftshift(doppler_axis_unshifted) #Shift the doppler axis to match the shifted rd_matrix
+    # doppler_axis_unshifted = np.fft.fftfreq(num_pulses, d=pulse_interval) #Calculate the doppler axis in Hz
+    # doppler_axis = np.fft.fftshift(doppler_axis_unshifted) #Shift the doppler axis to match the shifted rd_matrix
     #print("Shape of doppler axis:", doppler_axis.shape)
     #print(f"Doppler frequency range from {doppler_axis[0]} to {doppler_axis[-1]} Hz")
 
     #Step 5, convert to velocity
     wavelength = c / centre_freq #Calculate the wavelength in metres
-    velocity_axis = (doppler_axis * wavelength) / 2 #Calculate the velocity axis in m/s
-    print(f"Velocity range (m/s): {velocity_axis[0]:.2f} m/s to {velocity_axis[-1]:.2f} m/s") #Here the :.2f formats the float to 2 decimal places
+    # velocity_axis = (doppler_axis * wavelength) / 2 #Calculate the velocity axis in m/s
+    # print(f"Velocity range (m/s): {velocity_axis[0]:.2f} m/s to {velocity_axis[-1]:.2f} m/s") #Here the :.2f formats the float to 2 decimal places
     #Step 6, create the plot in imshow
-    plt.figure()
-    plt.imshow(rd_plot, aspect='auto', origin="lower", extent=[range_axis[0], range_axis[-1], velocity_axis[0], velocity_axis[-1]], vmin=-100, vmax=0)
-    #or plot in colormesh, but imshow seems to be a lot faster and better honestly
-    #plt.pcolormesh(range_axis, velocity_axis, rd_plot, vmin=-100, vmax=0)
-    plt.xlabel('Range [m]')
-    plt.ylabel('Velocity [m/s]')
-    plt.colorbar(label = 'Magnitude [dB]')
-    plt.title('Range-Doppler Spectogram Plot')
-    plt.xlim([0, 80])
-    plt.ylim([-13.24, 13.24])
-    plt.show()
-    #plt.close()
+    # plt.figure()
+    # plt.imshow(rd_plot, aspect='auto', origin="lower", extent=[range_axis[0], range_axis[-1], velocity_axis[0], velocity_axis[-1]], vmin=-100, vmax=0)
+    # #or plot in colormesh, but imshow seems to be a lot faster and better honestly
+    # #plt.pcolormesh(range_axis, velocity_axis, rd_plot, vmin=-100, vmax=0)
+    # plt.xlabel('Range [m]')
+    # plt.ylabel('Velocity [m/s]')
+    # plt.colorbar(label = 'Magnitude [dB]')
+    # plt.title('Range-Doppler Spectogram Plot')
+    # plt.xlim([0, 80])
+    # plt.ylim([-13.24, 13.24])
+    # plt.show()
+    # #plt.close()
 
 
+    #Now to rd process and make video now that I understand rd plotting better
+    cpi_length = 0.5 #Define the coherent processing interval in seconds
+    cpi_overlap = 0.9  #Define the overlap between each coherent processing intervals
+    pulses_per_cpi = int(cpi_length * prf) #How many pulses to include in each CPI, aka fft length/NFFT points
+    cpi_stride = int(np.round(pulses_per_cpi * (1-cpi_overlap))) #Stride length for the next CPI
+    print("Pulses per CPI:", pulses_per_cpi)
+    print("CPI stride:", cpi_stride)
+    window = signal.get_window('hann', pulses_per_cpi)  # Define the windowing function to be applied to the data
+    number_cpi = int(np.ceil((num_pulses - pulses_per_cpi) / cpi_stride)) #Calculate the number of CPIs
+    print("Number of CPIs:", number_cpi)
+
+    slice_doppler_axis_unshifted = np.fft.fftfreq(pulses_per_cpi, d=pulse_interval) #Calculate the doppler axis in Hz
+    slice_doppler_axis = np.fft.fftshift(slice_doppler_axis_unshifted) #Shift the doppler axis to match the shifted rd_matrix
+    velocity_axis = (wavelength * slice_doppler_axis) / 2 #Calculate the velocity axis in m/s
+    print(f"Velocity range (m/s): {velocity_axis[0]:.2f} m/s to {velocity_axis[-1]:.2f} m/s") #Here the :.2f formats the float to 2 decimal places
+
+    rd_slices_list = [] #List to hold the range doppler slices
+    for i in range(number_cpi):
+        start_index = i * cpi_stride
+        end_index = start_index + pulses_per_cpi
+        print("Start index:", start_index)
+        print("End index:", end_index)
+        windowed_cpi = positive_beat_frequencies[start_index:end_index] * window[:, np.newaxis] #Apply the window to the current CPI
+        rd_slice = np.fft.fft(windowed_cpi, axis=0)
+        rd_slice = np.fft.fftshift(rd_slice, axes=0)
+        slice_plot = (20 * np.log10(np.abs(rd_slice) / np.max(np.abs(rd_slice))))
+
+        rd_slices_list.append(slice_plot) #Append the slice to the list
 
 
+    print(f"Finished processing. Number of slices processed: {len(rd_slices_list)}")
+    #now lets use matplotlib animation
+
+    FPS = 1/((capture_period/number_cpi))  # Frames per second for the output video
+    VIDEO_FILENAME = fr'D:\ARESTOR_DATA\trial_3_rd_videos\{experiment_codename}\rd_video.mp4'  # Output video filename
+    COLOR_VMIN = -80  # Min value for the color scale (dB) - adjust as needed
+    COLOR_VMAX = 0    # Max value for the color scale (dB)
+    CMAP = 'jet'      # Colormap
+
+    # --- Setup the Figure ---
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Initial plot setup using the first frame
+    initial_data = rd_slices_list[0]
+    im = ax.imshow(initial_data,
+                    aspect='auto',
+                    origin='lower',
+                    extent=[range_axis[0], range_axis[-1], velocity_axis[0], velocity_axis[-1]],
+                    vmin=COLOR_VMIN,
+                    vmax=COLOR_VMAX,
+                    cmap=CMAP)
+
+    #Add labels and title (base title)
+    ax.set_xlabel('Range [m]')
+    ax.set_ylabel('Velocity [m/s]')
+    ax.set_xlim(range_axis[0], 90)
+    # Set the y-axis (Velocity) limits
+    ax.set_ylim(-13.4, 13.4)
+    base_title = 'Range-Doppler Map Evolution'
+    title_text = ax.set_title(base_title) # Store title object for updates
+
+# Add colorbar
+    cbar = fig.colorbar(im, label='Norm Power [dB]')
+    plt.tight_layout() # Adjust layout to fit colorbar
+
+# --- Update Function for Animation ---
+def update(frame_num):
+    current_rd_slice = rd_slices_list[frame_num]
+    im.set_data(current_rd_slice)  # Update image data
+
+    # Update title
+    start_time_sec = (frame_num * cpi_stride) / prf
+    current_title = f'{base_title}\nFrame: {frame_num + 1}/{len(rd_slices_list)}, Time ≈ {start_time_sec:.2f} s'
+    title_text.set_text(current_title)
+
+    return [im, title_text]  # Return updated artists
+
+
+# --- Create and Save Animation ---
+print(f"Creating animation with {len(rd_slices_list)} frames...")
+ani = animation.FuncAnimation(fig,
+                              update,
+                              frames=len(rd_slices_list),
+                              interval=1000 / FPS,  # ms delay
+                              blit=True,  # Use blitting for efficiency
+                              repeat=False)
+
+ani.save(VIDEO_FILENAME, writer='ffmpeg', fps=FPS, dpi=150)
+
+plt.close(fig)
