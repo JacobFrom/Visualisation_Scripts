@@ -6,6 +6,7 @@ import matplotlib as mpl
 import scipy.signal as signal
 import matplotlib.animation as animation
 from scipy.ndimage import median_filter
+import time
 
 
 experiment_codename = 'run_7'
@@ -69,6 +70,8 @@ time_axis = np.linspace(0, capture_period, num_pulses)
 
 print("Shape of time axis:", time_axis)
 
+CMAP = 'inferno' #Colormap for the plots
+
 #Code for removing close in clutter is in elipses
 #If you wish to crop some data out use following code:
 
@@ -99,12 +102,12 @@ RTI_plot_flag = False
 if RTI_plot_flag:
 
     RTI_plot = (20 * np.log10(np.abs(positive_beat_frequencies) / np.max(np.abs(positive_beat_frequencies))))
-    plt.imshow(RTI_plot, aspect='auto', origin="lower", extent=[range_axis[0], range_axis[-1], time_axis[0], time_axis[-1]], vmin=-50, vmax=0)
+    plt.imshow(RTI_plot, aspect='auto', origin="lower", extent=[range_axis[0], range_axis[-1], time_axis[0], time_axis[-1]], vmin=-80, vmax=0, cmap=CMAP)
     plt.xlabel('Range [m]')
     plt.ylabel('Time [s]')
     plt.colorbar(label = 'Magnitude [dB]')
     plt.title('Range-Time Intensity Plot')
-    plt.xlim([0, 100])
+    plt.xlim([0, 90])
     #Now save the plot to the data directory
     rti_plot_filename = 'RTI_plot.png'
     full_rti_save_path = os.path.join(directory, rti_plot_filename)
@@ -142,12 +145,12 @@ if MIT_plot_flag:
 
     #or for imshow instead:
 
-    plt.imshow(MTI_plot, aspect='auto', origin="lower", extent=[range_axis[0], range_axis[-1], mti_time_axis[0], mti_time_axis[-1]], vmin=-50, vmax=0)
+    plt.imshow(MTI_plot, aspect='auto', origin="lower", extent=[range_axis[0], range_axis[-1], mti_time_axis[0], mti_time_axis[-1]], vmin=-80, vmax=0, cmap=CMAP)
     plt.xlabel('Range [m]')
     plt.ylabel('Time [s]')
     plt.colorbar(label = 'Relative Magnitude [dB]')
     plt.title('MTI-Filtered Range-Time Intensity Plot')
-    plt.xlim([0, 100])
+    plt.xlim([0, 90])
     #Now save the plot to the data directory
     mti_plot_filename = 'MTI_plot.png'
     full_mti_save_path = os.path.join(directory, mti_plot_filename)
@@ -231,6 +234,7 @@ if rd_processing_flag:
 
 
     print(f"Finished processing. Number of slices processed: {len(rd_slices_list)}")
+    #Next step is to create an animation
     #now lets use matplotlib animation
 
     # #here we attempt some filtering on the list
@@ -247,10 +251,10 @@ if rd_processing_flag:
 
 
     FPS = 1/((capture_period/number_cpi))  # Frames per second for the output video
-    VIDEO_FILENAME = fr'D:\ARESTOR_DATA\trial_3_rd_videos\{experiment_codename}\rd_video.mp4'  # Output video filename
-    COLOR_VMIN = -80  # Min value for the color scale (dB) - adjust as needed
-    COLOR_VMAX = 0    # Max value for the color scale (dB)
-    CMAP = 'jet'      # Colormap
+    VIDEO_FILENAME = fr'D:\ARESTOR_DATA\trial_3_rd_videos\{experiment_codename}\{CMAP}_256_rd_video.mp4'  # Output video filename
+    COLOR_VMIN = -63  # Min value for the color scale (dB) - adjust as needed
+    COLOR_VMAX = -10    # Max value for the color scale (dB)
+
 
     # --- Setup the Figure ---
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -289,7 +293,7 @@ def update(frame_num):
     #current_rd_slice = processed_slices[frame_num].copy()
     current_rd_slice = rd_slices_list[frame_num].copy()
 
-    noise_threshold = -60
+    noise_threshold = -58
     # Apply noise thresholding
     current_rd_slice[current_rd_slice < noise_threshold] = COLOR_VMIN
 
@@ -308,8 +312,9 @@ def update(frame_num):
 
 # --- Create and Save Animation ---
 
-(f"Creating animation with {len(rd_slices_list)} frames...")
+print(f"Creating animation with {len(rd_slices_list)} frames...")
 #print(f"Creating animation with {len(processed_slices)} frames...")
+start_time = time.perf_counter()
 
 ani = animation.FuncAnimation(fig,
                               update,
@@ -322,5 +327,10 @@ ani = animation.FuncAnimation(fig,
                               repeat=False)
 
 ani.save(VIDEO_FILENAME, writer='ffmpeg', fps=FPS, dpi=150)
+
+end_time = time.perf_counter()
+duration = end_time - start_time
+print(f"Animation saved to {VIDEO_FILENAME}")
+print(f"Animation creation and saving took {duration:.2f} seconds.")
 
 plt.close(fig)

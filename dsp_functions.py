@@ -113,34 +113,4 @@ def rangeDopplerslice(radar_matrix, cpi, prf, cpi_overlap, zero_padding, window_
 
     return number_cpi, pulses_per_cpi, range_doppler_slices
 
-def create_video(range_doppler_slices, frame_rate, doppler_range_axis, max_range, doppler_axis, max_doppler, dynamic_range,
-                 video_name, video_title):
-    fig, ax = plt.subplots(figsize=(10, 6))
-    out = cv2.VideoWriter(video_name, cv2.VideoWriter_fourcc(*'XVID'), frame_rate, (640, 480))
-    try:
-
-        for idx, slice_ in enumerate(range_doppler_slices): # Each range doppler slice is processed in a loop, idx is the index, slice is the slice data
-            ax.clear() #Clear axis ready for next slice
-            ax.set_title(f'{video_title} - Frame {idx + 1}') #Title indicates frame number
-            ax.set_xlabel('Range (m)') #Set x axis label
-            ax.set_ylabel('Velocity (m/s)') #set y axis label
-
-            power_db = 20 * np.log10(np.abs(slice_)) #Calculate power in dB
-            im = ax.imshow(power_db, extent=[doppler_range_axis[0], doppler_range_axis[-1], doppler_axis[0], doppler_axis[-1]],
-                           aspect='auto', vmin=power_db.max() - dynamic_range, vmax=power_db.max(), cmap='jet')
-            ax.set_xlim([0, max_range]) #Set x axis limits
-            ax.set_ylim([-max_doppler, max_doppler]) #Set y axis limits
-            plt.colorbar(im, ax=ax, label='Power (dB)')
-            plt.draw()
-
-            #Convert the plot to an image and write to the video
-            fig.canvas.draw()
-            img = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
-            img = img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-            out.write(img)
-
-    finally:
-        out.release()
-        plt.close(fig)
 

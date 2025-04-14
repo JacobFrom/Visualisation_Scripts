@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 passive_flag = True
 
 if passive_flag:
-sig = waveform(5800e6, 80e6, 500e-6, 1024)
+    sig = waveform(5800e6, 80e6, 500e-6, 1024)
 
 capture_period = 5
 Fs = 3.84e9 #Sample Rate
