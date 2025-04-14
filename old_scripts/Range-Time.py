@@ -1,8 +1,7 @@
-import scipy as sp
 import numpy as np
 import matplotlib.pyplot as plt
 from classes import waveform
-from dsp_functions import get_RT
+from old_scripts.dsp_functions import get_RT
 
 #The data is the output of the active mode capture
 

@@ -1,11 +1,8 @@
-import os
 import scipy as sp
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 from classes import waveform
-import cv2
-from dsp_functions import rangeDopplerslice, create_video
+from old_scripts.dsp_functions import rangeDopplerslice, create_video
 
 # Define waveform parameters
 signal = waveform(2.44e9, 80e6, 500e-6, 1024)

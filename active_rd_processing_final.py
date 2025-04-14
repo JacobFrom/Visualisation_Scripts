@@ -210,7 +210,7 @@ if rd_processing_flag:
     cpi_stride = int(np.round(pulses_per_cpi * (1-cpi_overlap))) #Stride length for the next CPI
     print("Pulses per CPI:", pulses_per_cpi)
     print("CPI stride:", cpi_stride)
-    window = signal.get_window('hann', pulses_per_cpi)  # Define the windowing function to be applied to the data
+    window = signal.get_window('blackmanharris', pulses_per_cpi)  # Define the windowing function to be applied to the data
     number_cpi = int(np.ceil((num_pulses - pulses_per_cpi) / cpi_stride)) #Calculate the number of CPIs
     print("Number of CPIs:", number_cpi)
 
@@ -251,7 +251,7 @@ if rd_processing_flag:
 
 
     FPS = 1/((capture_period/number_cpi))  # Frames per second for the output video
-    VIDEO_FILENAME = fr'D:\ARESTOR_DATA\trial_3_rd_videos\{experiment_codename}\{CMAP}_256_rd_video.mp4'  # Output video filename
+    VIDEO_FILENAME = fr'D:\ARESTOR_DATA\trial_3_rd_videos\{experiment_codename}\{CMAP}_bmanh_rd_video.mp4'  # Output video filename
     COLOR_VMIN = -63  # Min value for the color scale (dB) - adjust as needed
     COLOR_VMAX = -10    # Max value for the color scale (dB)
 

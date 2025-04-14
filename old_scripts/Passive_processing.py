@@ -2,10 +2,7 @@ import os
 import scipy as sp
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib as mpl
-from classes import waveform
-import cv2
-from dsp_functions import rangeDopplerslice, create_video
+from old_scripts.dsp_functions import rangeDopplerslice, create_video
 
 # Define file paths for memory-mapped files
 ref_data_mmap_file = 'ref_data_mmap.dat'
