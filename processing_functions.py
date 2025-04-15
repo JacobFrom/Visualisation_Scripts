@@ -2,17 +2,16 @@ import numpy as np
 import scipy.signal as signal
 import time
 
-from active_rd_processing_final import velocity_axis
 
 
-def get_passive_rd_slices(correlation_matrix, slow_time_step, wavelength, cpi_sec, cpi_overlap):
+def get_passive_rd_slices(correlation_matrix, slow_time_step, wavelength, cpi_sec, rd_cpi_overlap):
 
     #Calculate the number of samples in the slow time domain
     slow_time_samples = correlation_matrix.shape[0]
     #Calculate the number of samples per CPI
     samples_per_cpi = int(np.ceil(cpi_sec / slow_time_step))
     #Calculate the CPI stride
-    cpi_stride = int(np.round(samples_per_cpi * (1 - cpi_overlap)))
+    cpi_stride = int(np.round(samples_per_cpi * (1 - rd_cpi_overlap)))
     #Calculate the number of CPIs that can be processed
     num_rd_slices = int(np.floor((slow_time_samples - samples_per_cpi) / cpi_stride)) + 1
 
