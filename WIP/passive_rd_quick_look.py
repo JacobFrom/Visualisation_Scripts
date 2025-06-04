@@ -222,7 +222,6 @@ if __name__ == "__main__":
         max_range_meters=quick_max_range,
         doppler_duration_sec=quick_doppler_dur,
         doppler_overlap=quick_doppler_olap,
-
     )
 
     # --- Use the results ---
