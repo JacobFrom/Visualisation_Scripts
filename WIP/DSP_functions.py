@@ -5,7 +5,7 @@ import scipy.signal as signal
 import matplotlib.animation as animation
 import time
 
-def plot_RTI(beat_frequencies_array, range_axis, time_axis, v_min, v_max, CMAP, x_lim, directory):
+def plot_RTI(beat_frequencies_array, range_axis, time_axis, v_min, v_max, CMAP, x_lim, directory, save_as):
 
     """
     Plots a Range-Time Intensity (RTI) plot of the beat frequencies array.
@@ -29,7 +29,7 @@ def plot_RTI(beat_frequencies_array, range_axis, time_axis, v_min, v_max, CMAP, 
     plt.title('Range-Time Intensity (RTI) Plot')
     plt.xlim(x_lim)
 
-    rti_plot_filename = 'RTI_plot.png'
+    rti_plot_filename = save_as + '.png'
     full_rti_save_path = os.path.join(directory, rti_plot_filename)
 
     print('Saving RTI plot...')
@@ -41,7 +41,7 @@ def plot_RTI(beat_frequencies_array, range_axis, time_axis, v_min, v_max, CMAP, 
 
     plt.close()  # Close the plot to free up memory
 
-def plot_MTI(MTI_filtered_data, range_axis, mti_time_axis, mti_v_min, mti_v_max, CMAP, x_lim, directory):
+def plot_MTI(MTI_filtered_data, range_axis, mti_time_axis, mti_v_min, mti_v_max, CMAP, x_lim, directory, save_as):
     """
     Plots a Moving Target Indicator (MTI) plot of the filtered data.
 
@@ -64,7 +64,7 @@ def plot_MTI(MTI_filtered_data, range_axis, mti_time_axis, mti_v_min, mti_v_max,
     plt.title('Moving Target Indicator (MTI) Plot')
     plt.xlim(x_lim)
 
-    mti_plot_filename = 'MTI_plot.png'
+    mti_plot_filename = save_as + '.png'
     full_mti_save_path = os.path.join(directory, mti_plot_filename)
 
     print('Saving MTI plot...')
@@ -123,3 +123,101 @@ def range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_win
         print(f'Finished slice: {len(rd_slices_list)} of {number_cpi}')
     print(f"Finished processing. Number of slices processed: {len(rd_slices_list)}")
     return rd_slices_list, velocity_axis
+
+
+def create_rd_video(FPS, rd_slices_list, prf, cpi_stride, range_axis, velocity_axis, vid_v_min, vid_v_max, CMAP, x_lim, directory, save_as):
+
+    """
+    Creates a video from the range-Doppler slices.
+
+    Parameters:
+    - FPS: Frames per second for the output video.
+    - rd_slices_list: List of range-Doppler slices.
+    - range_axis: 1D numpy array representing the range axis.
+    - velocity_axis: 1D numpy array representing the velocity axis.
+    - vid_v_min: Minimum value for color scaling in the video.
+    - vid_v_max: Maximum value for color scaling in the video.
+    - cmap: Colormap to use for the video.
+    - xlim: Tuple specifying the x-axis limits (start, end).
+    - directory: Directory to save the video.
+    """
+    VIDEO_FILENAME = save_as + '.mp4'  # Output video filename
+    VIDEO_SAVE = os.path.join(directory, VIDEO_FILENAME)
+    COLOR_VMIN = vid_v_min  # Min value for the color scale (dB) - adjust as needed
+    COLOR_VMAX = vid_v_max    # Max value for the color scale (dB)
+
+
+    # --- Setup the Figure ---
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Initial plot setup using the first frame
+
+    initial_data = rd_slices_list[0]
+        #initial_data = processed_slices[0]
+
+    im = ax.imshow(initial_data,
+                    aspect='auto',
+                    origin='lower',
+                    extent=[range_axis[0], range_axis[-1], velocity_axis[0], velocity_axis[-1]],
+                    vmin=COLOR_VMIN,
+                    vmax=COLOR_VMAX,
+                    cmap=CMAP)
+
+    #Add labels and title (base title)
+    ax.set_xlabel('Range [m]')
+    ax.set_ylabel('Velocity [m/s]')
+    ax.set_xlim(x_lim)
+    # Set the y-axis (Velocity) limits
+    ax.set_ylim(velocity_axis[0], velocity_axis[-1])
+    base_title = 'Range-Doppler Plot Evolution'
+    title_text = ax.set_title(base_title) # Store title object for updates
+
+    # Add colorbar
+    cbar = fig.colorbar(im, label='Norm Power [dB]')
+    plt.tight_layout() # Adjust layout to fit colorbar
+
+    #Now need to creat the update function for the animation, will nest it inside the create_video function to avoid confusion
+    #Will also include some filtering inside the update function to clean up the video
+    def update(frame_num):
+
+        #current_rd_slice = rd_slices_list[frame_num]
+        #current_rd_slice = processed_slices[frame_num]
+        #current_rd_slice = processed_slices[frame_num].copy()
+        current_rd_slice = rd_slices_list[frame_num].copy()
+
+        noise_threshold = vid_v_min + 4 # Set a noise threshold for the video
+        # Apply noise thresholding
+        current_rd_slice[current_rd_slice < noise_threshold] = COLOR_VMIN
+
+        im.set_data(current_rd_slice)  # Update image data
+
+        # Update title
+        start_time_sec = (frame_num * cpi_stride) / (prf)
+
+        current_title = f'{base_title}\nFrame: {frame_num + 1}/{len(rd_slices_list)}, Time ≈ {start_time_sec:.2f} s'
+        #current_title = f'{base_title}\nFrame: {frame_num + 1}/{len(processed_slices)}, Time ≈ {start_time_sec:.2f} s'
+
+        title_text.set_text(current_title)
+
+        return [im, title_text]  # Return updated artists
+
+    # --- Create and Save Animation ---
+    print(f"Creating animation with {len(rd_slices_list)} frames...")
+    animation_start_time = time.perf_counter()
+    ani = animation.FuncAnimation(fig,
+                                  update,
+                                  frames=len(rd_slices_list),
+                                  interval=1000 / FPS,  #ms delay between frames
+                                  blit=True,
+                                  repeat=False)
+    animation_end_time = time.perf_counter()
+    animation_duration = animation_end_time - animation_start_time
+    print(f'Animation creation took {animation_duration:.2f} seconds.')
+    print(f"Finished creating animation with {len(rd_slices_list)} frames. Now saving to {VIDEO_SAVE}...")
+    # Save the animation
+    saving_start_time = time.perf_counter()
+    ani.save(str(VIDEO_SAVE), writer='ffmpeg', fps=FPS, dpi=150)
+    saving_end_time = time.perf_counter()
+    saving_duration = saving_end_time - saving_start_time
+    print(f"Animation saved to {VIDEO_SAVE} and saving took {saving_duration} seconds.")
+    plt.close(fig)

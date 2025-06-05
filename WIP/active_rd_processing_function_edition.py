@@ -8,6 +8,7 @@ import matplotlib.animation as animation
 from scipy.ndimage import median_filter
 import time
 import DSP_functions as DSP
+from WIP.DSP_functions import create_rd_video
 
 # Below are the parameters of the radar capture
 s_band = 2.44e9  # active centre frequency
@@ -30,7 +31,7 @@ experiment_directory = fr'G:\ARESTOR_DATA\dorchester_active_jf' # Directory cont
 if batch_process_flag:
     captures = os.listdir(experiment_directory)
 else:
-    captures = 'dorch_drone1_run4'  # Set to a specific capture directory if not batch processing
+    captures = ['dorch_drone7_run2']  # Set to a specific capture directory if not batch processing
 
 for capture in captures:
 
@@ -92,15 +93,16 @@ for capture in captures:
 
     #To generate the RTI plot, change flag value to True
 
-    RTI_plot_flag = False
+    RTI_plot_flag = True
 
     if RTI_plot_flag:
 
         v_min = -50  # Minimum value for RTI plot
         v_max = 0    # Maximum value for RTI plot
         x_lim = [0, 120]  # X-axis limits for the RTI plot
+        RTI_file_name = f'function_test_rti_plot'  # Output RTI plot filename
 
-        DSP.plot_RTI(positive_beat_frequencies, range_axis, time_axis, v_min, v_max,CMAP, x_lim, directory)
+        DSP.plot_RTI(positive_beat_frequencies, range_axis, time_axis, v_min, v_max,CMAP, x_lim, directory, RTI_file_name)
         print("RTI plot created and saved successfully.")
 
     # #Now lets make and apply an MTI filter and produce another plot:
@@ -118,10 +120,11 @@ for capture in captures:
         mti_v_min = -50  # Minimum value for MTI plot
         mti_v_max = 0   # Maximum value for MTI plot
         mti_x_lim = [0, 120] # Range limit for the MTI plot
+        mti_file_name = f'function_test_mti_plot'  # Output MTI plot filename
 
         print("Shape of mti_time_axis:", mti_time_axis)
 
-        DSP.plot_MTI(mti_filtered_data,range_axis, mti_time_axis, mti_v_min, mti_v_max, CMAP, mti_x_lim, directory)  #Now we can plot the MTI filtered data
+        DSP.plot_MTI(mti_filtered_data,range_axis, mti_time_axis, mti_v_min, mti_v_max, CMAP, mti_x_lim, directory, mti_file_name)  #Now we can plot the MTI filtered data
 
         print("MTI plot created and saved successfully.")
         del mti_filtered_data, mti_time_axis  # Free up memory by deleting the MTI filtered data and time axis
@@ -133,8 +136,6 @@ for capture in captures:
     if rd_processing_flag:
         print("Starting Range-Doppler processing...")
 
-        pulse_interval = 1 / prf #Calculate the pulse interval in seconds
-
         wavelength = c / centre_freq #Calculate the wavelength in metres
 
         cpi_length = 0.5 #Define the coherent processing interval in seconds
@@ -142,134 +143,20 @@ for capture in captures:
 
         rd_window = 'blackmanharris'
 
-        pulses_per_cpi = int(cpi_length * prf) #How many pulses to include in each CPI, aka fft length/NFFT points
-        cpi_stride = int(np.round(pulses_per_cpi * (1-cpi_overlap))) #Stride length for the next CPI
-        print("Pulses per CPI:", pulses_per_cpi)
-        print("CPI stride:", cpi_stride)
-        window = signal.get_window('blackmanharris', pulses_per_cpi)  # Define the windowing function to be applied to the data
-        number_cpi = int(np.ceil((num_pulses - pulses_per_cpi) / cpi_stride)) #Calculate the number of CPIs
-        print("Number of CPIs:", number_cpi)
+        rd_slices, velocity_axis = DSP.range_Doppler_slicing(positive_beat_frequencies, cpi_length, cpi_overlap, prf, rd_window, wavelength)#Perform range-Doppler slicing
 
-        slice_doppler_axis_unshifted = np.fft.fftfreq(pulses_per_cpi, d=pulse_interval) #Calculate the doppler axis in Hz
-        slice_doppler_axis = np.fft.fftshift(slice_doppler_axis_unshifted) #Shift the doppler axis to match the shifted rd_matrix
-        velocity_axis = (wavelength * slice_doppler_axis) / 2 #Calculate the velocity axis in m/s
-        print(f"Velocity range (m/s): {velocity_axis[0]:.2f} m/s to {velocity_axis[-1]:.2f} m/s") #Here the :.2f formats the float to 2 decimal places
+        print(f"Finished processing. Number of slices processed: {len(rd_slices)}")
 
-        rd_slices_list = [] #List to hold the range doppler slices
-        for i in range(number_cpi):
-            start_index = i * cpi_stride
-            end_index = start_index + pulses_per_cpi
-            print("Start index:", start_index)
-            print("End index:", end_index)
-            windowed_cpi = positive_beat_frequencies[start_index:end_index] * window[:, np.newaxis] #Apply the window to the current CPI
-            rd_slice = np.fft.fft(windowed_cpi, axis=0)
-            rd_slice = np.fft.fftshift(rd_slice, axes=0)
-            slice_plot = (20 * np.log10(np.abs(rd_slice) / np.max(np.abs(rd_slice))))
-
-            rd_slices_list.append(slice_plot) #Append the slice to the list
-            print(f'Finished slice: {len(rd_slices_list)} of {number_cpi}')
-
-
-        print(f"Finished processing. Number of slices processed: {len(rd_slices_list)}")
         #Next step is to create an animation
-        #now lets use matplotlib animation
 
-        # #here we attempt some filtering on the list
-        #
-        # processed_slices = []
-        # filter_size = 3
-        #
-        # for i, rd_slice in enumerate(rd_slices_list):
-        #     # Apply median filter to the slice
-        #     filtered_slice = median_filter(rd_slice, size=(filter_size))
-        #     processed_slices.append(filtered_slice)
-        #
-        # print(f"Finished filtering. Number of slices processed: {len(processed_slices)}")
+        FPS = 1/((capture_period/int(len(rd_slices))))  # Frames per second for the output video
 
-
-        FPS = 1/((capture_period/number_cpi))  # Frames per second for the output video
-        VIDEO_FILENAME = f'{CMAP}_bmanh_rd_video.mp4'  # Output video filename
+        VIDEO_FILENAME = f'function_test_rd_video'  # Output video filename
         VIDEO_SAVE = os.path.join(directory, VIDEO_FILENAME)
-        COLOR_VMIN = -63  # Min value for the color scale (dB) - adjust as needed
-        COLOR_VMAX = -10    # Max value for the color scale (dB)
+        COLOR_VMIN = -60  # Min value for the color scale (dB) - adjust as needed
+        COLOR_VMAX = 0    # Max value for the color scale (dB)
+        vid_x_lim = [0, 120]  # X-axis limits for the video
 
+        create_rd_video(FPS, rd_slices, prf, cpi_length, range_axis, velocity_axis, COLOR_VMIN, COLOR_VMAX, CMAP, vid_x_lim, directory, VIDEO_FILENAME)
 
-        # --- Setup the Figure ---
-        fig, ax = plt.subplots(figsize=(10, 6))
-
-        # Initial plot setup using the first frame
-
-        initial_data = rd_slices_list[0]
-        #initial_data = processed_slices[0]
-
-        im = ax.imshow(initial_data,
-                        aspect='auto',
-                        origin='lower',
-                        extent=[range_axis[0], range_axis[-1], velocity_axis[0], velocity_axis[-1]],
-                        vmin=COLOR_VMIN,
-                        vmax=COLOR_VMAX,
-                        cmap=CMAP)
-
-        #Add labels and title (base title)
-        ax.set_xlabel('Range [m]')
-        ax.set_ylabel('Velocity [m/s]')
-        ax.set_xlim(range_axis[0], 150)
-        # Set the y-axis (Velocity) limits
-        ax.set_ylim(-13.4, 13.4)
-        base_title = 'Range-Doppler Map Evolution'
-        title_text = ax.set_title(base_title) # Store title object for updates
-
-    # Add colorbar
-        cbar = fig.colorbar(im, label='Norm Power [dB]')
-        plt.tight_layout() # Adjust layout to fit colorbar
-
-    # --- Update Function for Animation ---
-    def update(frame_num):
-
-        #current_rd_slice = rd_slices_list[frame_num]
-        #current_rd_slice = processed_slices[frame_num]
-        #current_rd_slice = processed_slices[frame_num].copy()
-        current_rd_slice = rd_slices_list[frame_num].copy()
-
-        noise_threshold = -58
-        # Apply noise thresholding
-        current_rd_slice[current_rd_slice < noise_threshold] = COLOR_VMIN
-
-        im.set_data(current_rd_slice)  # Update image data
-
-        # Update title
-        start_time_sec = (frame_num * cpi_stride) / prf
-
-        current_title = f'{base_title}\nFrame: {frame_num + 1}/{len(rd_slices_list)}, Time ≈ {start_time_sec:.2f} s'
-        #current_title = f'{base_title}\nFrame: {frame_num + 1}/{len(processed_slices)}, Time ≈ {start_time_sec:.2f} s'
-
-        title_text.set_text(current_title)
-
-        return [im, title_text]  # Return updated artists
-
-
-    # --- Create and Save Animation ---
-
-    print(f"Creating animation with {len(rd_slices_list)} frames...")
-    #print(f"Creating animation with {len(processed_slices)} frames...")
-    start_time = time.perf_counter()
-
-    ani = animation.FuncAnimation(fig,
-                                  update,
-
-                                  frames=len(rd_slices_list),
-                                  #frames=len(processed_slices),
-
-                                  interval=1000 / FPS,  # ms delay
-                                  blit=True,  # Use blitting for efficiency
-                                  repeat=False)
-
-    ani.save(VIDEO_SAVE, writer='ffmpeg', fps=FPS, dpi=150)
-
-    end_time = time.perf_counter()
-    duration = end_time - start_time
-    print(f"Animation saved to {VIDEO_SAVE}")
-    print(f"Animation creation and saving took {duration:.2f} seconds.")
-
-    plt.close(fig)
-    print(f"Finished processing dataset: {experiment_codename}")
+        print(f"Finished processing dataset: {experiment_codename}")
