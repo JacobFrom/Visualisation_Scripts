@@ -1,7 +1,7 @@
 import scipy as sp
 import numpy as np
 import matplotlib.pyplot as plt
-from classes import waveform
+from legacy_working_scripts.classes import waveform
 from old_scripts.dsp_functions import rangeDopplerslice, create_video
 
 # Define waveform parameters

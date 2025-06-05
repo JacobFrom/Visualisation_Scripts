@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from classes import waveform
+from legacy_working_scripts.classes import waveform
 # Define waveform parameters
 signal = waveform(5.8e9, 80e6, 500e-6, 1024)
 # Define sample rate, capture period and number of pulses

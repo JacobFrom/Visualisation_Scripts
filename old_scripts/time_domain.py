@@ -1,6 +1,5 @@
 import numpy as np
-from classes import waveform
-import matplotlib as mp
+from legacy_working_scripts.classes import waveform
 import matplotlib.pyplot as plt
 
 

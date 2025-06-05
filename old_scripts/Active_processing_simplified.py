@@ -1,9 +1,6 @@
-import os
-import scipy as sp
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib as mpl
-from classes import waveform
+from legacy_working_scripts.classes import waveform
 from scipy.signal import get_window
 
 # Define waveform parameters

@@ -1,14 +1,7 @@
 import os
-import scipy as sp
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-import scipy.signal as signal
-import matplotlib.animation as animation
-from scipy.ndimage import median_filter
-import time
 import DSP_functions as DSP
-from WIP.DSP_functions import create_rd_video
+from DSP_functions import create_rd_video
 
 # Below are the parameters of the radar capture
 s_band = 2.44e9  # active centre frequency
@@ -143,20 +136,21 @@ for capture in captures:
 
         rd_window = 'blackmanharris'
 
-        rd_slices, velocity_axis = DSP.range_Doppler_slicing(positive_beat_frequencies, cpi_length, cpi_overlap, prf, rd_window, wavelength)#Perform range-Doppler slicing
+        rd_slices, velocity_axis, number_cpi, cpi_stride = DSP.range_Doppler_slicing(positive_beat_frequencies, cpi_length, cpi_overlap, prf, rd_window, wavelength) #Perform range-Doppler slicing
 
         print(f"Finished processing. Number of slices processed: {len(rd_slices)}")
 
         #Next step is to create an animation
 
-        FPS = 1/((capture_period/int(len(rd_slices))))  # Frames per second for the output video
+        FPS = 1/((capture_period/number_cpi))  # Frames per second for the output video
 
-        VIDEO_FILENAME = f'function_test_rd_video'  # Output video filename
+
+        VIDEO_FILENAME = f'function_test_rd_video_3'  # Output video filename
         VIDEO_SAVE = os.path.join(directory, VIDEO_FILENAME)
         COLOR_VMIN = -60  # Min value for the color scale (dB) - adjust as needed
         COLOR_VMAX = 0    # Max value for the color scale (dB)
         vid_x_lim = [0, 120]  # X-axis limits for the video
 
-        create_rd_video(FPS, rd_slices, prf, cpi_length, range_axis, velocity_axis, COLOR_VMIN, COLOR_VMAX, CMAP, vid_x_lim, directory, VIDEO_FILENAME)
+        create_rd_video(FPS, rd_slices, prf, cpi_stride, range_axis, velocity_axis, COLOR_VMIN, COLOR_VMAX, CMAP, vid_x_lim, directory, VIDEO_FILENAME)
 
         print(f"Finished processing dataset: {experiment_codename}")

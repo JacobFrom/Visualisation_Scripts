@@ -103,6 +103,9 @@ def range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_win
 
     number_cpi = int(np.ceil((num_pulses - pulses_per_cpi) / cpi_stride))
 
+    print("Pulses per CPI:", pulses_per_cpi)
+    print("CPI stride:", cpi_stride)
+
     #configure the axis for the range-Doppler slices
     slice_doppler_axis_unshifted = np.fft.fftfreq(pulses_per_cpi, d=pulse_interval) #This calculates doppler axis in Hz
     slice_doppler_axis = np.fft.fftshift(slice_doppler_axis_unshifted) #Shift to center zero frequency
@@ -122,7 +125,7 @@ def range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_win
         rd_slices_list.append(slice_plot)  # Append the slice to the list
         print(f'Finished slice: {len(rd_slices_list)} of {number_cpi}')
     print(f"Finished processing. Number of slices processed: {len(rd_slices_list)}")
-    return rd_slices_list, velocity_axis
+    return rd_slices_list, velocity_axis, number_cpi, cpi_stride
 
 
 def create_rd_video(FPS, rd_slices_list, prf, cpi_stride, range_axis, velocity_axis, vid_v_min, vid_v_max, CMAP, x_lim, directory, save_as):
@@ -192,7 +195,7 @@ def create_rd_video(FPS, rd_slices_list, prf, cpi_stride, range_axis, velocity_a
         im.set_data(current_rd_slice)  # Update image data
 
         # Update title
-        start_time_sec = (frame_num * cpi_stride) / (prf)
+        start_time_sec = (frame_num * cpi_stride) / prf
 
         current_title = f'{base_title}\nFrame: {frame_num + 1}/{len(rd_slices_list)}, Time ≈ {start_time_sec:.2f} s'
         #current_title = f'{base_title}\nFrame: {frame_num + 1}/{len(processed_slices)}, Time ≈ {start_time_sec:.2f} s'
