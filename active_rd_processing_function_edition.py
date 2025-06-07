@@ -140,7 +140,9 @@ for capture in captures:
 
         print(f"Finished processing. Number of slices processed: {len(rd_slices)}")
 
-        #Next step is to create an animation
+        """ RD slicing is finished, below code is for creating range-Doppler Videos. Note: Video creation function has some built-in filtering
+        That you may wish to adjust based on how your videos look."""
+
 
         FPS = 1/((capture_period/number_cpi))  # Frames per second for the output video
 

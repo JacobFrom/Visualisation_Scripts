@@ -2,10 +2,7 @@ import numpy as np
 import os
 
 
-datasets = os.listdir('G:\ARESTOR_DATA\dorchester_active_jf')
+ref_30 = np.load(r'G:\ARESTOR_DATA\trial_3_captures\run_7\passive_data_test_1\passive_ref_output.npy')
+surv_30 = np.load(r'G:\ARESTOR_DATA\trial_3_captures\run_7\passive_data_test_1\passive_surv_output.npy')
 
-for dataset in datasets:
-    experiment_dir = dataset
-    print(experiment_dir)
-
-print('finished iterating through datasets')
+ref_20 = np.load(r'G:\ARESTOR_DATA\trial_3_captures\run_13\passive_data_test_1\passive_ref_output.npy')

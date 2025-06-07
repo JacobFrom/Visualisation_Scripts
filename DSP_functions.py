@@ -76,7 +76,7 @@ def plot_MTI(MTI_filtered_data, range_axis, mti_time_axis, mti_v_min, mti_v_max,
 
     plt.close()  # Close the plot to free up memory
 
-def range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_window, wavelength):
+def range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_window, wavelength, radar_mode):
     """
     Performs range-Doppler slicing on the beat frequencies data.
 
@@ -87,6 +87,7 @@ def range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_win
     - prf: Pulse repetition frequency.
     - rd_window: Window function for range-Doppler processing.
     - wavelength: Wavelength of the radar signal.
+    - radar_mode: Radar mode, accepts 'passive', 'active').
 
     Returns:
     - rd_slices_list: List of range-Doppler slices.
@@ -105,7 +106,12 @@ def range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_win
 
     print("Pulses per CPI:", pulses_per_cpi)
     print("CPI stride:", cpi_stride)
-
+    if radar_mode.lower() == 'passive':
+        velocity_denominator = 1 # For passive radar, the velocity is calculated directly from the Doppler frequency
+    elif radar_mode.lower() == 'active':
+        velocity_denominator = 2 # For active radar, the velocity is calculated from the Doppler frequency divided by 2
+    else:
+        raise ValueError('Invalid radar mode. Please use ''passive'' or ''active''.')
     #configure the axis for the range-Doppler slices
     slice_doppler_axis_unshifted = np.fft.fftfreq(pulses_per_cpi, d=pulse_interval) #This calculates doppler axis in Hz
     slice_doppler_axis = np.fft.fftshift(slice_doppler_axis_unshifted) #Shift to center zero frequency
@@ -128,7 +134,7 @@ def range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_win
     return rd_slices_list, velocity_axis, number_cpi, cpi_stride
 
 
-def create_rd_video(FPS, rd_slices_list, prf, cpi_stride, range_axis, velocity_axis, vid_v_min, vid_v_max, CMAP, x_lim, directory, save_as):
+def create_rd_video(FPS, rd_slices_list, prf, cpi_stride, range_axis, velocity_axis, vid_v_min, vid_v_max, CMAP, x_lim, directory, save_as, y_lim=None):
 
     """
     Creates a video from the range-Doppler slices.
@@ -171,7 +177,7 @@ def create_rd_video(FPS, rd_slices_list, prf, cpi_stride, range_axis, velocity_a
     ax.set_ylabel('Velocity [m/s]')
     ax.set_xlim(x_lim)
     # Set the y-axis (Velocity) limits
-    ax.set_ylim(velocity_axis[0], velocity_axis[-1])
+    ax.set_ylim(y_lim)
     base_title = 'Range-Doppler Plot Evolution'
     title_text = ax.set_title(base_title) # Store title object for updates
 
@@ -188,7 +194,7 @@ def create_rd_video(FPS, rd_slices_list, prf, cpi_stride, range_axis, velocity_a
         #current_rd_slice = processed_slices[frame_num].copy()
         current_rd_slice = rd_slices_list[frame_num].copy()
 
-        noise_threshold = vid_v_min + 4 # Set a noise threshold for the video
+        noise_threshold = vid_v_min + 2 # Set a noise threshold for the video
         # Apply noise thresholding
         current_rd_slice[current_rd_slice < noise_threshold] = COLOR_VMIN
 
@@ -224,3 +230,94 @@ def create_rd_video(FPS, rd_slices_list, prf, cpi_stride, range_axis, velocity_a
     saving_duration = saving_end_time - saving_start_time
     print(f"Animation saved to {VIDEO_SAVE} and saving took {saving_duration} seconds.")
     plt.close(fig)
+
+def py_xcorr(ref_iq_matrix, surv_iq_matrix, max_lag, min_lag=0):
+    """
+    Performs cross-correlation between reference and surveillance IQ matrices.
+
+    Parameters:
+    - ref_iq_matrix: 2D numpy array of reference IQ data.
+    - surv_iq_matrix: 2D numpy array of surveillance IQ data.
+    - max_lag: Maximum lag in samples.
+    - min_lag: Minimum lag in samples.
+
+    Returns:
+    - cc_matrix: Cross-correlation matrix.
+    - lags: 1D numpy array of lag idx corresponding to the cross-correlation values.
+    """
+    full_corr = signal.correlate(ref_iq_matrix, surv_iq_matrix, mode='full', method='auto')
+    full_lags = signal.correlation_lags(len(ref_iq_matrix), len(surv_iq_matrix), mode='full')
+
+    # Extract the relevant lags and cross-correlation values
+    zero_lag_idx = len(full_corr) // 2
+    #With center point known for 0th lag, we can calculate the indices for the desired lags
+    min_lag_idx = zero_lag_idx + min_lag
+    max_lag_idx = zero_lag_idx + max_lag + 1  # +1 to include the max lag in the output
+
+    #Now to extract the relevant part of the cross-correlation matrix
+    cc_matrix = full_corr[min_lag_idx:max_lag_idx]
+    lags = full_lags[min_lag_idx:max_lag_idx]
+
+    return cc_matrix, lags
+
+
+
+
+def passive_processing(ref_iq, surv_iq, seg_s, seg_percent, Fs, max_lag_samples, min_lag_samples=0):
+    """
+    Processes the reference and surveillance IQ data to compute the beat frequencies.
+
+    Parameters:
+    - ref_iq: 1D numpy array of reference IQ data.
+    - surv_iq: 1D numpy array of surveillance IQ data.
+    - seg_s: Number of segments per second.
+    - seg_percent: Percentage of segments used in cross-correlation.
+    - Fs: Sample rate after decimation.
+    - max_lag_samples: Maximum lag in samples.
+
+    Returns:
+    - dec_ref_channel: Decimated reference channel data.
+    - self_ambg_matrix: Self-ambiguity matrix of the reference data.
+    - cc_matrix: Cross-correlation matrix of the reference and surveillance data.
+    """
+    # Set up the segmented matrixes for processing
+    seg_size = int(Fs / seg_s) # Segment size in samples
+    num_segments = int(np.floor(len(ref_iq)/seg_size))  # Number of segments in the reference data
+
+    ref_iq = ref_iq[0:int((num_segments*seg_size))]
+    surv_iq = surv_iq[0:int((num_segments*seg_size))]  # Ensure both signals have the same length
+
+    seg_ref_channel = np.reshape(ref_iq, (num_segments, seg_size))
+    seg_surv_channel = np.reshape(surv_iq, (num_segments, seg_size))
+
+    # Calculate the decimated reference channel
+    cc_size = np.round(seg_size * (seg_percent/100))
+    dec_ref_channel = seg_ref_channel[:, 0:int(cc_size)]  # Decimate the reference channel
+    dec_surv_channel = seg_surv_channel[:, 0:int(cc_size)]  # Decimate the surveillance channel
+    print(f"Decimated reference channel shape: {dec_ref_channel.shape}, Decimated surveillance channel shape: {dec_surv_channel.shape}")
+
+    #Here we begin the time domain cross-correlation processing
+    #Start with specifying the CC matrix idx of interest for extraction later
+    num_range_bins_out = max_lag_samples - min_lag_samples + 1  # Number of range bins in the output
+
+    cc_matrix = np.zeros((num_segments, num_range_bins_out), dtype=complex) # Initialize thecross-correlation matrix
+    self_ambg_matrix = np.zeros((num_segments, num_range_bins_out),dtype=complex)
+
+    start_time = time.perf_counter()
+    # Calculate the self-ambiguity matrix for the reference data
+    for i in range(num_segments):
+
+        temp_cc_matrix, temp_lags = py_xcorr(dec_ref_channel[i, :], dec_surv_channel[i, :],
+                                             max_lag=max_lag_samples,
+                                             min_lag=min_lag_samples)
+        temp_sa_matrix, _ = py_xcorr(dec_ref_channel[i, :], dec_ref_channel[i, :],
+                                                 max_lag=max_lag_samples,
+                                                 min_lag=min_lag_samples)
+        cc_matrix[i, :] = temp_cc_matrix
+        self_ambg_matrix[i, :] = temp_sa_matrix
+        print(f"Finished processing {i} of {num_segments} segments of data.")
+    cc_lags = temp_lags  # Store the lags from the last segment processed
+    end_time = time.perf_counter()
+    processing_duration = end_time - start_time
+    print(f"Finished processing {num_segments} segments of data in {processing_duration:.2f} seconds.")
+    return self_ambg_matrix, cc_matrix, cc_lags
