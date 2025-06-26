@@ -30,10 +30,10 @@ wavelength = c / centre_freq  # Wavelength of the radar signal
 #These are the parameters of the range-Doppler video creation, they will affect the video output.
 CMAP = 'inferno'  # Colormap for the range-Doppler video
 
-unfiltered_VIDEO_FILENAME = 'function_test_rd_video_2'  # Output video filename
+unfiltered_VIDEO_FILENAME = 'function_test_rd_video_4'  # Output video filename
 unfiltered_VMIN = -50  # Min value for the color scale (dB) - adjust as needed
 unfiltered_VMAX = 0  # Max value for the color scale (dB)
-vid_x_lim = [0, 150]  # X-axis limits for the video
+vid_x_lim = [0, 130]  # X-axis limits for the video
 
 #Decide here if you want to batch process or process individual datasets
 batch_process_flag = False  # Set to True to process all datasets in the directory, False to process a single dataset

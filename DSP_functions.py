@@ -107,7 +107,7 @@ def range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_win
     print("Pulses per CPI:", pulses_per_cpi)
     print("CPI stride:", cpi_stride)
     if radar_mode.lower() == 'passive':
-        velocity_denominator = 1 # For passive radar, the velocity is calculated directly from the Doppler frequency
+        velocity_denominator = 2 # For passive radar, the velocity is calculated directly from the Doppler frequency
     elif radar_mode.lower() == 'active':
         velocity_denominator = 2 # For active radar, the velocity is calculated from the Doppler frequency divided by 2
     else:
@@ -115,7 +115,7 @@ def range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_win
     #configure the axis for the range-Doppler slices
     slice_doppler_axis_unshifted = np.fft.fftfreq(pulses_per_cpi, d=pulse_interval) #This calculates doppler axis in Hz
     slice_doppler_axis = np.fft.fftshift(slice_doppler_axis_unshifted) #Shift to center zero frequency
-    velocity_axis = (wavelength*slice_doppler_axis) / 2 # Convert to velocity in m/s
+    velocity_axis = (wavelength*slice_doppler_axis) / velocity_denominator # Convert to velocity in m/s
 
     #Now onto the slicing
     rd_slices_list = [] #Pre allocate the list for range-Doppler slices
