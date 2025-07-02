@@ -19,12 +19,12 @@ decimated_sample_rate = Fs / (8 * 256)  # Decimated sample rate
 #Decide here if you want to batch process or process individual datasets
 batch_process_flag = False  # Set to True to process all datasets in the directory, False to process a single dataset
 
-experiment_directory = fr'G:\ARESTOR_DATA\dorchester_active_jf' # Directory containing the experiment data
+experiment_directory = fr'D:\ARESTOR\Data\Ulm_trial\tests\day_3' # Directory containing the experiment data
 
 if batch_process_flag:
     captures = os.listdir(experiment_directory)
 else:
-    captures = ['dorch_drone7_run2']  # Set to a specific capture directory if not batch processing
+    captures = ['ulm_day_3_pc12_5']  # Set to a specific capture directory if not batch processing
 
 for capture in captures:
 
@@ -69,7 +69,7 @@ for capture in captures:
     #Derive appropriate range and time axis
     range_axis = np.linspace(0, (num_range_bins-1)*range_bin_size, num_range_bins)#Create a range axis from 0 to the maximum range in metres
 
-    #print("Shape of range axis:", range_axis)
+    print("Max range:", range_axis[-1])
 
     time_axis = np.linspace(0, capture_period, num_pulses)
 
@@ -92,7 +92,7 @@ for capture in captures:
 
         v_min = -50  # Minimum value for RTI plot
         v_max = 0    # Maximum value for RTI plot
-        x_lim = [0, 120]  # X-axis limits for the RTI plot
+        x_lim = [0, 1000]  # X-axis limits for the RTI plot
         RTI_file_name = f'function_test_rti_plot'  # Output RTI plot filename
 
         DSP.plot_RTI(positive_beat_frequencies, range_axis, time_axis, v_min, v_max,CMAP, x_lim, directory, RTI_file_name)
@@ -112,7 +112,7 @@ for capture in captures:
         #Here we can also set MTI specific V-min and V-max values if desired, or can leave them as above
         mti_v_min = -50  # Minimum value for MTI plot
         mti_v_max = 0   # Maximum value for MTI plot
-        mti_x_lim = [0, 120] # Range limit for the MTI plot
+        mti_x_lim = [0, 1000] # Range limit for the MTI plot
         mti_file_name = f'function_test_mti_plot'  # Output MTI plot filename
 
         print("Shape of mti_time_axis:", mti_time_axis)
@@ -136,7 +136,7 @@ for capture in captures:
 
         rd_window = 'blackmanharris'
 
-        rd_slices, velocity_axis, number_cpi, cpi_stride = DSP.range_Doppler_slicing(positive_beat_frequencies, cpi_length, cpi_overlap, prf, rd_window, wavelength) #Perform range-Doppler slicing
+        rd_slices, velocity_axis, number_cpi, cpi_stride = DSP.range_Doppler_slicing(positive_beat_frequencies, cpi_length, cpi_overlap, prf, rd_window, wavelength, 'active') #Perform range-Doppler slicing
 
         print(f"Finished processing. Number of slices processed: {len(rd_slices)}")
 
@@ -151,7 +151,7 @@ for capture in captures:
         VIDEO_SAVE = os.path.join(directory, VIDEO_FILENAME)
         COLOR_VMIN = -60  # Min value for the color scale (dB) - adjust as needed
         COLOR_VMAX = 0    # Max value for the color scale (dB)
-        vid_x_lim = [0, 120]  # X-axis limits for the video
+        vid_x_lim = [0, 1000]  # X-axis limits for the video
 
         create_rd_video(FPS, rd_slices, prf, cpi_stride, range_axis, velocity_axis, COLOR_VMIN, COLOR_VMAX, CMAP, vid_x_lim, directory, VIDEO_FILENAME)
 

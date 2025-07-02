@@ -134,7 +134,7 @@ def range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_win
     return rd_slices_list, velocity_axis, number_cpi, cpi_stride
 
 
-def create_rd_video(FPS, rd_slices_list, prf, cpi_stride, range_axis, velocity_axis, vid_v_min, vid_v_max, CMAP, x_lim, directory, save_as, y_lim=None):
+def create_rd_video(FPS, rd_slices_list, prf, cpi_stride, range_axis, velocity_axis, vid_v_min, vid_v_max, CMAP, x_lim, directory, save_as, y_lim=None, sharpening=True):
 
     """
     Creates a video from the range-Doppler slices.
@@ -192,14 +192,17 @@ def create_rd_video(FPS, rd_slices_list, prf, cpi_stride, range_axis, velocity_a
         #current_rd_slice = rd_slices_list[frame_num]
         #current_rd_slice = processed_slices[frame_num]
         #current_rd_slice = processed_slices[frame_num].copy()
-        current_rd_slice = rd_slices_list[frame_num].copy()
+        if sharpening:
+            current_rd_slice = rd_slices_list[frame_num].copy()
 
-        noise_threshold = vid_v_min + 2 # Set a noise threshold for the video
+            noise_threshold = vid_v_min + 2 # Set a noise threshold for the video
         # Apply noise thresholding
-        current_rd_slice[current_rd_slice < noise_threshold] = COLOR_VMIN
+            current_rd_slice[current_rd_slice < noise_threshold] = COLOR_VMIN
 
-        im.set_data(current_rd_slice)  # Update image data
-
+            im.set_data(current_rd_slice)  # Update image data
+        else:
+            current_rd_slice = rd_slices_list[frame_num]
+            im.set_data(current_rd_slice)
         # Update title
         start_time_sec = (frame_num * cpi_stride) / prf
 
@@ -231,7 +234,7 @@ def create_rd_video(FPS, rd_slices_list, prf, cpi_stride, range_axis, velocity_a
     print(f"Animation saved to {VIDEO_SAVE} and saving took {saving_duration} seconds.")
     plt.close(fig)
 
-def py_xcorr(ref_iq_matrix, surv_iq_matrix, max_lag, min_lag=0):
+def py_xcorr(surv_iq_matrix, ref_iq_matrix, max_lag, min_lag=0):
     """
     Performs cross-correlation between reference and surveillance IQ matrices.
 
@@ -245,8 +248,8 @@ def py_xcorr(ref_iq_matrix, surv_iq_matrix, max_lag, min_lag=0):
     - cc_matrix: Cross-correlation matrix.
     - lags: 1D numpy array of lag idx corresponding to the cross-correlation values.
     """
-    full_corr = signal.correlate(ref_iq_matrix, surv_iq_matrix, mode='full', method='auto')
-    full_lags = signal.correlation_lags(len(ref_iq_matrix), len(surv_iq_matrix), mode='full')
+    full_corr = signal.correlate(surv_iq_matrix, ref_iq_matrix, mode='full', method='auto')
+    full_lags = signal.correlation_lags(len(surv_iq_matrix), len(ref_iq_matrix), mode='full')
 
     # Extract the relevant lags and cross-correlation values
     zero_lag_idx = len(full_corr) // 2
@@ -263,7 +266,7 @@ def py_xcorr(ref_iq_matrix, surv_iq_matrix, max_lag, min_lag=0):
 
 
 
-def passive_processing(ref_iq, surv_iq, seg_s, seg_percent, Fs, max_lag_samples, min_lag_samples=0):
+def passive_processing(surv_iq, ref_iq, seg_s, seg_percent, Fs, max_lag_samples, min_lag_samples=0):
     """
     Processes the reference and surveillance IQ data to compute the beat frequencies.
 
@@ -307,17 +310,41 @@ def passive_processing(ref_iq, surv_iq, seg_s, seg_percent, Fs, max_lag_samples,
     # Calculate the self-ambiguity matrix for the reference data
     for i in range(num_segments):
 
-        temp_cc_matrix, temp_lags = py_xcorr(dec_ref_channel[i, :], dec_surv_channel[i, :],
+        temp_cc_matrix, temp_lags = py_xcorr(dec_surv_channel[i, :], dec_ref_channel[i, :],
                                              max_lag=max_lag_samples,
                                              min_lag=min_lag_samples)
         temp_sa_matrix, _ = py_xcorr(dec_ref_channel[i, :], dec_ref_channel[i, :],
                                                  max_lag=max_lag_samples,
-                                                 min_lag=min_lag_samples)
+                                                min_lag=min_lag_samples)
+
+
         cc_matrix[i, :] = temp_cc_matrix
         self_ambg_matrix[i, :] = temp_sa_matrix
         print(f"Finished processing {i} of {num_segments} segments of data.")
-    cc_lags = temp_lags  # Store the lags from the last segment processed
+    #cc_lags = temp_lags # Store the lags from the last segment processed
     end_time = time.perf_counter()
     processing_duration = end_time - start_time
     print(f"Finished processing {num_segments} segments of data in {processing_duration:.2f} seconds.")
-    return self_ambg_matrix, cc_matrix, cc_lags
+    return self_ambg_matrix, cc_matrix #cc_lags
+
+def simple_zero_doppler_cleaning(caf_slice, self_ambg_zero_doppler, max_iterations, loop_gain_p, threshold_abs):
+    doppler_bins, range_bins = np.shape(caf_slice)
+    zero_doppler_idx = (doppler_bins + 1) / 2
+    self_ambg_zero_doppler = self_ambg_zero_doppler.flatten().reshape(1, -1)
+    abs_self_ambg_zero_doppler = np.abs(self_ambg_zero_doppler)
+    peak_idx_self = np.argmax(abs_self_ambg_zero_doppler)
+    normalised_self_ambg_zero_doppler = abs_self_ambg_zero_doppler / abs_self_ambg_zero_doppler[peak_idx_self]
+    center_idx_self_ambg = peak_idx_self
+
+    residual_caf = caf_slice
+
+
+
+    for iter in range(max_iterations):
+        zero_doppler_cut_residual = residual_caf[zero_doppler_idx, :]
+        peak_abs_val, delay_idx = np.max(np.abs(zero_doppler_cut_residual))
+        if peak_abs_val < threshold_abs:
+            break
+        scale_factor = zero_doppler_cut_residual(delay_idx)
+
+        shift_amount = delay_idx - center_idx_self_ambg
