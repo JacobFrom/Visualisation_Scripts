@@ -35,8 +35,14 @@ unfiltered_VMIN = -50  # Min value for the color scale (dB) - adjust as needed
 unfiltered_VMAX = 0  # Max value for the color scale (dB)
 vid_x_lim = [0, max_range]  # X-axis limits for the video
 
+filtered_VIDEO_FILENAME = f'CLEANed_threshold_1_{unfiltered_VIDEO_FILENAME}'
+filtered_VMIN = -50
+filtered_VMAX = 0
+
 #Decide here if you want to batch process or process individual datasets
 batch_process_flag = False  # Set to True to process all datasets in the directory, False to process a single dataset
+
+DSI_cleaning_flag = True
 
 correlation_exists_flag = True
 
@@ -98,42 +104,73 @@ for capture in captures:
     #slices for the cross-correlation matrix, then we will get the self_ambg slices for the self-ambiguity matrix and
     #subsequent DSI processing.
 
-    rd_slices, velocity_axis, number_cpi, cpi_stride = DSP.range_Doppler_slicing(cc_matrix, cpi_length,
+    rd_slices, velocity_axis, number_cpi, cpi_stride = DSP.passive_range_Doppler_slicing(cc_matrix, cpi_length,
                                                                                       cpi_overlap, PRF, rd_window,
-                                                                                      wavelength, radar_mode='passive')
+                                                                                      wavelength)
     print(f"Completed range-Doppler slicing of cross-correlation matrix. rd_slices shape: {len(rd_slices)}, moving"
           f" on to self-ambiguity matrix slicing.")
-    self_ambg_slices, _, _, _ = DSP.range_Doppler_slicing(self_ambg_matrix, cpi_length, cpi_overlap,
-                                                  PRF, rd_window, wavelength, radar_mode='passive')
+    self_ambg_slices, _, _, _ = DSP.passive_range_Doppler_slicing(self_ambg_matrix, cpi_length, cpi_overlap,
+                                                  PRF, rd_window, wavelength)
     print(f"Completed self-ambiguity matrix slicing. self_ambg_slices shape: {len(self_ambg_slices)}, moving on to "
           f" range-Doppler video creation.")
-
+    print("Creating RD plots array for video")
+    rd_plots = []
+    for slice in rd_slices:
+        slice_plot = (20 * np.log10(np.abs(slice) / np.max(np.abs(slice))))
+        rd_plots.append(slice_plot)
+        print(f"Appended slice {len(rd_plots)}")
+    print(f"Finished creating RD plots. RD plots shape: {len(rd_plots)}")
     #Now we will create the range-Doppler video from the range-Doppler slices.
-    unfiltered_rd_video_flag = True  # Set to True to create unfiltered RD video.
+    unfiltered_rd_video_flag = False  # Set to True to create unfiltered RD video.
     if unfiltered_rd_video_flag:
+
         FPS = 1 / ((capture_period / number_cpi))  # Frames per second for the output video
         VIDEO_SAVE = os.path.join(directory, unfiltered_VIDEO_FILENAME)
         doppler_limit = [velocity_axis[0], velocity_axis[-1]]
-        DSP.create_rd_video(FPS, rd_slices, PRF, cpi_stride, range_axis_m, velocity_axis,
+        DSP.create_rd_video(FPS, rd_plots, PRF, cpi_stride, range_axis_m, velocity_axis,
                             unfiltered_VMIN, unfiltered_VMAX, CMAP, vid_x_lim, directory,
                             unfiltered_VIDEO_FILENAME, doppler_limit, sharpening=False)
 
 
     #DSI CLEANING CODE
-    p = 0.1 #Loop Gain
-    threshold = 1e-5 #Absolute magnitue threshold
-    max_iterations = 100 #Maximum number of CLEANing iterations per slice
-    num_slices = int(len(rd_slices))
-    middle_cpi_idx = np.floor(num_slices / 2).astype(int) #Because of pythons 0 based indexing this may or may not be wrong. If wrong add +1
-    doppler_bins_self = self_ambg_slices[middle_cpi_idx].shape[0]
-    zero_doppler_idx_self = (doppler_bins_self + 1) / 2
-    self_ambg_zero_doppler_cut = self_ambg_slices[middle_cpi_idx][zero_doppler_idx_self,:]
-    #Now send to DSI function
+    if DSI_cleaning_flag:
 
-    cleaned_rd_slices = np.zeros(1, num_slices)
+        p = 0.1 #Loop Gain
+        threshold = 10e-4 #Absolute magnitue threshold
+        max_iterations = 100 #Maximum number of CLEANing iterations per slice
+        num_slices = int(len(rd_slices))
+        middle_cpi_idx = int(np.floor((num_slices / 2))) #Because of pythons 0 based indexing this may or may not be wrong. If wrong add +1
+        doppler_bins_self = self_ambg_slices[middle_cpi_idx].shape[0]
+        zero_doppler_idx_self = int(np.floor(doppler_bins_self) / 2)
+        self_ambg_zero_doppler_cut = self_ambg_slices[middle_cpi_idx][zero_doppler_idx_self,:]
+        #Now send to DSI function
 
-    for i in range(num_slices):
-        cleaned_rd_slices[i] = simple_zero_doppler_cleaning[]
+        cleaned_rd_slices = []
+
+        for i in range(num_slices):
+            current_caf_slice = rd_slices[i]
+            cleaned_slice = DSP.simple_zero_doppler_cleaning(rd_slices[i], self_ambg_zero_doppler_cut, max_iterations, p, threshold)
+            cleaned_rd_slices.append(cleaned_slice)
+            print(f"Finished Cleaning Slice {len(cleaned_rd_slices)} of {len(rd_slices)} Slices.")
+
+        print("Finished DSI CLEAN operations")
+
+        cleaned_rd_plots = []
+        for cleaned_slice in cleaned_rd_slices:
+            clean_plot = (20 * np.log10(np.abs(cleaned_slice) / np.max(np.abs(cleaned_slice))))
+            cleaned_rd_plots.append(clean_plot)
+            print(f"Appended slice {len(cleaned_rd_plots)}")
+
+        print(f"Finished creating cleaned plots. cleaned_rd_plots shape: {len(cleaned_rd_plots)}")
+    filtered_rd_video_flag = True
+
+    if filtered_rd_video_flag:
+        FPS = 1 / ((capture_period / number_cpi))
+        VIDEO_SAVE = os.path.join(directory, filtered_VIDEO_FILENAME)
+        doppler_limit = [velocity_axis[0], velocity_axis[-1]]
+        DSP.create_rd_video(FPS, cleaned_rd_plots, PRF, cpi_stride, range_axis_m, velocity_axis,
+                            filtered_VMIN, filtered_VMAX, CMAP, vid_x_lim, directory,
+                            filtered_VIDEO_FILENAME, doppler_limit, sharpening=False)
 
 
 

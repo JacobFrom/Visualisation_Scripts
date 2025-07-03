@@ -5,6 +5,7 @@ import scipy.signal as signal
 import matplotlib.animation as animation
 import time
 
+
 def plot_RTI(beat_frequencies_array, range_axis, time_axis, v_min, v_max, CMAP, x_lim, directory, save_as):
 
     """
@@ -76,7 +77,7 @@ def plot_MTI(MTI_filtered_data, range_axis, mti_time_axis, mti_v_min, mti_v_max,
 
     plt.close()  # Close the plot to free up memory
 
-def range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_window, wavelength, radar_mode):
+def range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_window, wavelength):
     """
     Performs range-Doppler slicing on the beat frequencies data.
 
@@ -106,16 +107,11 @@ def range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_win
 
     print("Pulses per CPI:", pulses_per_cpi)
     print("CPI stride:", cpi_stride)
-    if radar_mode.lower() == 'passive':
-        velocity_denominator = 2 # For passive radar, the velocity is calculated directly from the Doppler frequency
-    elif radar_mode.lower() == 'active':
-        velocity_denominator = 2 # For active radar, the velocity is calculated from the Doppler frequency divided by 2
-    else:
-        raise ValueError('Invalid radar mode. Please use ''passive'' or ''active''.')
+
     #configure the axis for the range-Doppler slices
     slice_doppler_axis_unshifted = np.fft.fftfreq(pulses_per_cpi, d=pulse_interval) #This calculates doppler axis in Hz
     slice_doppler_axis = np.fft.fftshift(slice_doppler_axis_unshifted) #Shift to center zero frequency
-    velocity_axis = (wavelength*slice_doppler_axis) / velocity_denominator # Convert to velocity in m/s
+    velocity_axis = (wavelength*slice_doppler_axis) / 2 # Convert to velocity in m/s
 
     #Now onto the slicing
     rd_slices_list = [] #Pre allocate the list for range-Doppler slices
@@ -328,12 +324,17 @@ def passive_processing(surv_iq, ref_iq, seg_s, seg_percent, Fs, max_lag_samples,
     return self_ambg_matrix, cc_matrix #cc_lags
 
 def simple_zero_doppler_cleaning(caf_slice, self_ambg_zero_doppler, max_iterations, loop_gain_p, threshold_abs):
+
+
+
     doppler_bins, range_bins = np.shape(caf_slice)
-    zero_doppler_idx = (doppler_bins + 1) / 2
-    self_ambg_zero_doppler = self_ambg_zero_doppler.flatten().reshape(1, -1)
+    zero_doppler_idx = doppler_bins // 2
+    print(f"Number of doppler bins = {doppler_bins}, zero doppler idx = {zero_doppler_idx}")
+    self_ambg_zero_doppler = self_ambg_zero_doppler.flatten()
+    print("Shape of self_ambg_zero_doppler = ", self_ambg_zero_doppler.shape)
     abs_self_ambg_zero_doppler = np.abs(self_ambg_zero_doppler)
     peak_idx_self = np.argmax(abs_self_ambg_zero_doppler)
-    normalised_self_ambg_zero_doppler = abs_self_ambg_zero_doppler / abs_self_ambg_zero_doppler[peak_idx_self]
+    normalised_self_ambg_zero_doppler = self_ambg_zero_doppler / self_ambg_zero_doppler[peak_idx_self]
     center_idx_self_ambg = peak_idx_self
 
     residual_caf = caf_slice
@@ -342,9 +343,84 @@ def simple_zero_doppler_cleaning(caf_slice, self_ambg_zero_doppler, max_iteratio
 
     for iter in range(max_iterations):
         zero_doppler_cut_residual = residual_caf[zero_doppler_idx, :]
-        peak_abs_val, delay_idx = np.max(np.abs(zero_doppler_cut_residual))
+        #peak_abs_val, delay_idx = np.max(np.abs(zero_doppler_cut_residual))
+        peak_abs_val = np.max(np.abs(zero_doppler_cut_residual))
+        delay_idx = np.argmax(np.abs(zero_doppler_cut_residual))
         if peak_abs_val < threshold_abs:
             break
-        scale_factor = zero_doppler_cut_residual(delay_idx)
+        scale_factor = zero_doppler_cut_residual[delay_idx]
 
         shift_amount = delay_idx - center_idx_self_ambg
+        shifted_component_zd = np.zeros(range_bins, dtype=normalised_self_ambg_zero_doppler.dtype)
+        #print(f"Dtype of caf_slice: {caf_slice.dtype}")
+        #print(f"Dtype of self_ambg_zero_doppler_input: {self_ambg_zero_doppler.dtype}")
+        if shift_amount == 0:
+            shifted_component_zd = normalised_self_ambg_zero_doppler
+        elif shift_amount > 0:
+            len_to_copy = min(len(normalised_self_ambg_zero_doppler), range_bins - shift_amount)
+            if len_to_copy > 0:
+                shifted_component_zd[shift_amount : shift_amount + len_to_copy] = normalised_self_ambg_zero_doppler[:len_to_copy]
+        else:
+            len_to_copy = min(len(normalised_self_ambg_zero_doppler), range_bins + shift_amount)
+            if len_to_copy > 0:
+                shifted_component_zd[: len_to_copy] = normalised_self_ambg_zero_doppler[-shift_amount : -shift_amount + len_to_copy]
+        component_to_subtract = loop_gain_p * scale_factor * shifted_component_zd
+        residual_caf[zero_doppler_idx, :] = residual_caf[zero_doppler_idx, :] - component_to_subtract
+
+    cleaned_caf_slice = residual_caf
+
+    return cleaned_caf_slice
+
+def passive_range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_window, wavelength):
+    """
+    Performs range-Doppler slicing on the beat frequencies data.
+
+    Parameters:
+    - beat_frequencies: 2D numpy array of beat frequencies.
+    - cpi_length: Length of the coherent processing interval (CPI).
+    - cpi_overlap: Overlap percentage for the CPI.
+    - prf: Pulse repetition frequency.
+    - rd_window: Window function for range-Doppler processing.
+    - wavelength: Wavelength of the radar signal.
+    - radar_mode: Radar mode, accepts 'passive', 'active').
+
+    Returns:
+    - rd_slices_list: List of range-Doppler slices.
+    - velocity_axis: Velocity axis corresponding to the Doppler frequency.
+    """
+    #Configure the parameters for range-Doppler processing
+
+    pulse_interval = 1 / prf
+    num_pulses = beat_frequencies.shape[0]
+    pulses_per_cpi = int(cpi_length * prf)
+    cpi_stride = int(np.round(pulses_per_cpi * (1-cpi_overlap)))
+
+    window = signal.get_window(rd_window, pulses_per_cpi)
+
+    number_cpi = int(np.ceil((num_pulses - pulses_per_cpi) / cpi_stride))
+
+    print("Pulses per CPI:", pulses_per_cpi)
+    print("CPI stride:", cpi_stride)
+
+
+    #configure the axis for the range-Doppler slices
+    slice_doppler_axis_unshifted = np.fft.fftfreq(pulses_per_cpi, d=pulse_interval) #This calculates doppler axis in Hz
+    slice_doppler_axis = np.fft.fftshift(slice_doppler_axis_unshifted) #Shift to center zero frequency
+    velocity_axis = (wavelength*slice_doppler_axis) / 2 # Convert to velocity in m/s
+
+    #Now onto the slicing
+    rd_slices_list = [] #Pre allocate the list for range-Doppler slices
+    for i in range(number_cpi):
+        start_index = i * cpi_stride
+        end_index = start_index + pulses_per_cpi
+
+        windowed_cpi = beat_frequencies[start_index:end_index] * window[:, np.newaxis]  # Apply the window to the current CPI
+        rd_slice = np.fft.fft(windowed_cpi, axis=0)
+        rd_slice = np.fft.fftshift(rd_slice, axes=0)
+
+
+        rd_slices_list.append(rd_slice)  # Append the slice to the list
+        print(f'Finished slice: {len(rd_slices_list)} of {number_cpi}')
+    print(f"Finished processing. Number of slices processed: {len(rd_slices_list)}")
+    return rd_slices_list, velocity_axis, number_cpi, cpi_stride
+
