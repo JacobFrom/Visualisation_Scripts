@@ -17,7 +17,7 @@ seg_percent = 100 #Number of segments used in xcorr
 #These are the changable parameters of the processing, they will affect the correlations.
 min_range = 0  # Minimum range in meters
 min_lag_samples = np.ceil(min_range * d_Fs / c).astype(int)  # Minimum lag in samples
-max_range = 4000  # Maximum range in meters
+max_range = 5000  # Maximum range in meters
 max_lag_samples = np.ceil(max_range * d_Fs / c).astype(int)  # Maximum lag in samples
 
 #These are the parameters of the range-Doppler processing, they will affect the range-Doppler map and subsequent video.
@@ -30,7 +30,7 @@ wavelength = c / centre_freq  # Wavelength of the radar signal
 #These are the parameters of the range-Doppler video creation, they will affect the video output.
 CMAP = 'inferno'  # Colormap for the range-Doppler video
 
-unfiltered_VIDEO_FILENAME = 'no_sharpening_test_rd_video'  # Output video filename
+unfiltered_VIDEO_FILENAME = 'cropped_pre_DSI_rd_video'  # Output video filename
 unfiltered_VMIN = -50  # Min value for the color scale (dB) - adjust as needed
 unfiltered_VMAX = 0  # Max value for the color scale (dB)
 vid_x_lim = [0, max_range]  # X-axis limits for the video
@@ -42,16 +42,16 @@ filtered_VMAX = 0
 #Decide here if you want to batch process or process individual datasets
 batch_process_flag = False  # Set to True to process all datasets in the directory, False to process a single dataset
 
-DSI_cleaning_flag = True
+DSI_cleaning_flag = False
 
 correlation_exists_flag = True
 
-experiment_directory = fr'D:\ARESTOR\Data\Ulm_trial\tests\day_3' # Directory containing the experiment data
+experiment_directory = fr'G:\ARESTOR_DATA\Ulm_trial\tests\day_4' # Directory containing the experiment data
 
 if batch_process_flag:
     captures = os.listdir(experiment_directory)
 else:
-    captures = ['ulm_day_3_pc12_5']  # Set to a specific capture directory if not batch processing
+    captures = ['ulm_day_4_pc12_7']  # Set to a specific capture directory if not batch processing
 
 for capture in captures:
 
@@ -121,7 +121,7 @@ for capture in captures:
         print(f"Appended slice {len(rd_plots)}")
     print(f"Finished creating RD plots. RD plots shape: {len(rd_plots)}")
     #Now we will create the range-Doppler video from the range-Doppler slices.
-    unfiltered_rd_video_flag = False  # Set to True to create unfiltered RD video.
+    unfiltered_rd_video_flag = True  # Set to True to create unfiltered RD video.
     if unfiltered_rd_video_flag:
 
         FPS = 1 / ((capture_period / number_cpi))  # Frames per second for the output video
@@ -162,7 +162,7 @@ for capture in captures:
             print(f"Appended slice {len(cleaned_rd_plots)}")
 
         print(f"Finished creating cleaned plots. cleaned_rd_plots shape: {len(cleaned_rd_plots)}")
-    filtered_rd_video_flag = True
+    filtered_rd_video_flag = False
 
     if filtered_rd_video_flag:
         FPS = 1 / ((capture_period / number_cpi))
