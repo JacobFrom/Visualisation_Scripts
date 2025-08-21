@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 #The data is the output of the active mode capture
 
-data = np.load(r'E:\Ulm_trial\calibrations\ulm_day_1_calib_2\passive_data_test_1\passive_ref_output.npy')
+data = np.load(r'G:\ARESTOR_DATA\SIREN\east_fort_day_1\east_fort_capture_7\passive_data_test_1\passive_ref_output.npy')
 
 #Below are the parameters of the waveform
 
@@ -21,7 +21,7 @@ capture_period = 20
 Fs = 3.84e9 #Sample Rate
 total_samples = (Fs / total_decimation) * capture_period
 
-centre_freq = 570e6
+centre_freq = 494e6
 
 data = data[0::2] + 1j*data[1::2]
 print(f'{data[0:20]}')
@@ -33,7 +33,7 @@ fft_data = data[N:end] #Take the first N samples for the fft
 fft_data = fft_data * np.hamming(len(fft_data)) #Apply hamming window function to the data
 
 # Flag to control normalization
-normalize_psd = True
+normalize_psd = False
 
 if normalize_psd:
     PSD = np.abs(np.fft.fft(fft_data))**2 / (len(fft_data) * (Fs / total_decimation)) # Calculate the normalized Power Spectral Density

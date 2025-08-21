@@ -46,12 +46,12 @@ DSI_cleaning_flag = False
 
 correlation_exists_flag = True
 
-experiment_directory = fr'G:\ARESTOR_DATA\Ulm_trial\tests\day_4' # Directory containing the experiment data
+experiment_directory = fr'G:\ARESTOR_DATA\Ulm_trial\tests\day_2' # Directory containing the experiment data
 
 if batch_process_flag:
     captures = os.listdir(experiment_directory)
 else:
-    captures = ['ulm_day_4_pc12_7']  # Set to a specific capture directory if not batch processing
+    captures = ['ulm_day_2_2521']  # Set to a specific capture directory if not batch processing
 
 for capture in captures:
 
