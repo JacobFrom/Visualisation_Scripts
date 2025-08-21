@@ -153,6 +153,7 @@ for capture in captures:
         COLOR_VMAX = 0    # Max value for the color scale (dB)
         vid_x_lim = [0, 100]  # X-axis limits for the video
 
-        create_rd_video(FPS, rd_slices, prf, cpi_stride, range_axis, velocity_axis, COLOR_VMIN, COLOR_VMAX, CMAP, vid_x_lim, directory, VIDEO_FILENAME)
+        create_rd_video(FPS, rd_slices, prf, cpi_stride, range_axis, velocity_axis, COLOR_VMIN, COLOR_VMAX, CMAP, vid_x_lim, directory, VIDEO_FILENAME) #IMPORTANT: Ensure ffmpeg is installed and available in user path or this won't work
+        #Instructions on how to install ffmpeg can be found here: https://ffmpeg.org/download.html , or for a good video tutorial: https://www.youtube.com/watch?v=JR36oH35Fgg
 
         print(f"Finished processing dataset: {experiment_codename}")

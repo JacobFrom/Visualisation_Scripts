@@ -88,11 +88,13 @@ def range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_win
     - prf: Pulse repetition frequency.
     - rd_window: Window function for range-Doppler processing.
     - wavelength: Wavelength of the radar signal.
-    - radar_mode: Radar mode, accepts 'passive', 'active').
+
 
     Returns:
     - rd_slices_list: List of range-Doppler slices.
     - velocity_axis: Velocity axis corresponding to the Doppler frequency.
+    - number_cpi: Number of CPIs processed.
+    - cpi_stride: Stride between CPIs.
     """
     #Configure the parameters for range-Doppler processing
 
@@ -145,6 +147,9 @@ def create_rd_video(FPS, rd_slices_list, prf, cpi_stride, range_axis, velocity_a
     - cmap: Colormap to use for the video.
     - xlim: Tuple specifying the x-axis limits (start, end).
     - directory: Directory to save the video.
+    - save_as: Base name for the output video file.
+    - y_lim: Tuple specifying the y-axis limits (start, end). If None, defaults to the range of velocity_axis.
+    - sharpening: Boolean flag to apply sharpening to the video frames. In this case sharpening is my own invention where it will suppress noise below a certain threshold (currently v_min + 2 dB) in the video frames. Change to false to remove this effect.
     """
     VIDEO_FILENAME = save_as + '.mp4'  # Output video filename
     VIDEO_SAVE = os.path.join(directory, VIDEO_FILENAME)
@@ -224,7 +229,7 @@ def create_rd_video(FPS, rd_slices_list, prf, cpi_stride, range_axis, velocity_a
     print(f"Finished creating animation with {len(rd_slices_list)} frames. Now saving to {VIDEO_SAVE}...")
     # Save the animation
     saving_start_time = time.perf_counter()
-    ani.save(str(VIDEO_SAVE), writer='ffmpeg', fps=FPS, dpi=150)
+    ani.save(str(VIDEO_SAVE), writer='ffmpeg', fps=FPS, dpi=150) #IMPORTANT: Ensure ffmpeg is installed and available in user path or this won't work
     saving_end_time = time.perf_counter()
     saving_duration = saving_end_time - saving_start_time
     print(f"Animation saved to {VIDEO_SAVE} and saving took {saving_duration} seconds.")
