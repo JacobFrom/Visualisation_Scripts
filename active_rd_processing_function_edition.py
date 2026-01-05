@@ -4,22 +4,22 @@ import DSP_functions as DSP
 from DSP_functions import create_rd_video
 
 # Below are the parameters of the radar capture
-s_band = 2.45e9  # active centre frequency
+s_band = 2.44e9  # active centre frequency
 c_band = 5.8e9
 
 c = 3e8
 centre_freq = c_band  # active centre frequency
-bandwidth = 100e6  # chirp bandwidth
-chirp_period = 0.480e-3  # chirp length
-prf = 2000  # Pulse Repitition Frequency
+bandwidth = 80e6  # chirp bandwidth
+chirp_period = 500e-6  # chirp length
+prf = 1024  # Pulse Repitition Frequency
 
 Fs = 3.84e9
 decimated_sample_rate = Fs / (8 * 256)  # Decimated sample rate
 
 #Decide here if you want to batch process or process individual datasets
-batch_process_flag = False  # Set to True to process all datasets in the directory, False to process a single dataset
+batch_process_flag = True  # Set to True to process all datasets in the directory, False to process a single dataset
 
-experiment_directory = fr'C:\Users\jster\Downloads\Rikki_help' # Directory containing the experiment data
+experiment_directory = fr'G:\ARESTOR_DATA\trial_3_captures\C_band\32x' # Directory containing the experiment data
 
 if batch_process_flag:
     captures = os.listdir(experiment_directory)
@@ -30,10 +30,10 @@ for capture in captures:
 
     experiment_codename = capture  # Set the experiment codename to the current capture directory
 
-    directory = fr'{experiment_directory}\{experiment_codename}'
+    directory = fr'{experiment_directory}\{experiment_codename}\active_test_1'
 
 
-    data = np.load(directory + r'\deramped_S_Band_Radar_TX_1.npy')
+    data = np.load(directory + r'\1.npy')
 
     print(data.shape)
 
@@ -92,7 +92,7 @@ for capture in captures:
 
         v_min = -50  # Minimum value for RTI plot
         v_max = 0    # Maximum value for RTI plot
-        x_lim = [0, 100]  # X-axis limits for the RTI plot
+        x_lim = [0, 200]  # X-axis limits for the RTI plot
         RTI_file_name = f'function_test_rti_plot'  # Output RTI plot filename
 
         DSP.plot_RTI(positive_beat_frequencies, range_axis, time_axis, v_min, v_max,CMAP, x_lim, directory, RTI_file_name)
@@ -112,7 +112,7 @@ for capture in captures:
         #Here we can also set MTI specific V-min and V-max values if desired, or can leave them as above
         mti_v_min = -50  # Minimum value for MTI plot
         mti_v_max = 0   # Maximum value for MTI plot
-        mti_x_lim = [0, 100] # Range limit for the MTI plot
+        mti_x_lim = [0, 200] # Range limit for the MTI plot
         mti_file_name = f'function_test_mti_plot'  # Output MTI plot filename
 
         print("Shape of mti_time_axis:", mti_time_axis)
@@ -147,13 +147,13 @@ for capture in captures:
         FPS = 1/((capture_period/number_cpi))  # Frames per second for the output video
 
 
-        VIDEO_FILENAME = f'function_test_rd_video_3'  # Output video filename
+        VIDEO_FILENAME = f'range_Doppler_video_200m'  # Output video filename
         VIDEO_SAVE = os.path.join(directory, VIDEO_FILENAME)
         COLOR_VMIN = -50  # Min value for the color scale (dB) - adjust as needed
         COLOR_VMAX = 0    # Max value for the color scale (dB)
-        vid_x_lim = [0, 100]  # X-axis limits for the video
+        vid_x_lim = [0, 200]  # X-axis limits for the video
 
-        create_rd_video(FPS, rd_slices, prf, cpi_stride, range_axis, velocity_axis, COLOR_VMIN, COLOR_VMAX, CMAP, vid_x_lim, directory, VIDEO_FILENAME) #IMPORTANT: Ensure ffmpeg is installed and available in user path or this won't work
+        create_rd_video(FPS, rd_slices, prf, cpi_stride, range_axis, velocity_axis, COLOR_VMIN, COLOR_VMAX, CMAP, vid_x_lim, directory, VIDEO_FILENAME, y_lim=None, sharpening=False) #IMPORTANT: Ensure ffmpeg is installed and available in user path or this won't work
         #Instructions on how to install ffmpeg can be found here: https://ffmpeg.org/download.html , or for a good video tutorial: https://www.youtube.com/watch?v=JR36oH35Fgg
 
         print(f"Finished processing dataset: {experiment_codename}")
