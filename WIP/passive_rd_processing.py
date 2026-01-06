@@ -17,7 +17,7 @@ seg_percent = 100 #Number of segments used in xcorr
 #These are the changable parameters of the processing, they will affect the correlations.
 min_range = 0  # Minimum range in meters
 min_lag_samples = np.ceil(min_range * d_Fs / c).astype(int)  # Minimum lag in samples
-max_range = 10000  # Maximum range in meters
+max_range = 8000  # Maximum range in meters
 max_lag_samples = np.ceil(max_range * d_Fs / c).astype(int)  # Maximum lag in samples
 
 #These are the parameters of the range-Doppler processing, they will affect the range-Doppler map and subsequent video.
@@ -30,10 +30,10 @@ wavelength = c / centre_freq  # Wavelength of the radar signal
 #These are the parameters of the range-Doppler video creation, they will affect the video output.
 CMAP = 'viridis'  # Colormap for the range-Doppler video
 
-unfiltered_VIDEO_FILENAME = 'Viridis_fixed_ECA_filter_heli_vid'  # Output video filename
+unfiltered_VIDEO_FILENAME = '8km_fixed_ECA_filter_heli_vid'  # Output video filename
 unfiltered_VMIN = -50  # Min value for the color scale (dB) - adjust as needed
 unfiltered_VMAX = 0  # Max value for the color scale (dB)
-vid_x_lim = [0, 10000]  # X-axis limits for the video
+vid_x_lim = [0, max_range]  # X-axis limits for the video
 
 filtered_VIDEO_FILENAME = f'CLEANed_threshold_1_{unfiltered_VIDEO_FILENAME}'
 filtered_VMIN = -50
@@ -60,10 +60,15 @@ for capture in captures:
 
     directory = fr'{experiment_directory}\{experiment_codename}\passive_data_test_1'
     if correlation_exists_flag:
-        cc_matrix = np.load(directory + r'\cc_matrix.npy')
-        self_ambg_matrix = np.load(directory + r'\self_ambg_matrix.npy')
-        capture_period = len(cc_matrix) / d_Fs  # Calculate the duration of the capture in seconds
-        print("Cross-Correlation Matrix and Self-Ambiguity Matrix successfully loaded from memory. No Need to load IQ")
+        if not filtered_iq_exists_flag:
+            cc_matrix = np.load(directory + r'\cc_matrix.npy')
+            self_ambg_matrix = np.load(directory + r'\self_ambg_matrix.npy')
+            capture_period = 70  # Calculate the duration of the capture in seconds
+            print("Unfiltered Cross-Correlation Matrix and Self-Ambiguity Matrix successfully loaded from memory. No Need to load IQ")
+        else:
+            cc_matrix = np.load(directory + r'\fixed_filtered_cc_matrix.npy')
+            capture_period = 70  # Calculate the duration of the capture in seconds
+            print("Filtered Cross-Correlation Matrix successfully loaded from memory. No Need to load IQ")
     elif filtered_iq_exists_flag:
         ref_iq = np.load(directory + r'\ref_iq.npy')
         surv_iq = np.load(directory + r'\filtered_surv_eca_2.npy')
@@ -75,7 +80,7 @@ for capture in captures:
         print(f"Completed cross-correlation of data. self_ambg_matrix shape: {self_ambg_matrix.shape}, cc_matrix shape: "
               f"{cc_matrix.shape}, cc_lags shape: . Deleting raw data to save memory.")
         print(f"Saving filtered CC_matrix to {directory}")
-        np.save(directory + r'\fixed_filtered_cc_matrix.npy', cc_matrix)
+        np.save(directory + r'\8k_filtered_cc_matrix.npy', cc_matrix)
 
     else:
         ref_data = np.load(directory + r'\passive_ref_output.npy')
@@ -123,13 +128,9 @@ for capture in captures:
     rd_slices, velocity_axis, number_cpi, cpi_stride = DSP.passive_range_Doppler_slicing(cc_matrix, cpi_length,
                                                                                       cpi_overlap, PRF, rd_window,
                                                                                       wavelength)
-    print(f"Completed range-Doppler slicing of cross-correlation matrix. rd_slices shape: {len(rd_slices)}, moving"
-          f" on to self-ambiguity matrix slicing.")
-    self_ambg_slices, _, _, _ = DSP.passive_range_Doppler_slicing(self_ambg_matrix, cpi_length, cpi_overlap,
-                                                  PRF, rd_window, wavelength)
-    print(f"Completed self-ambiguity matrix slicing. self_ambg_slices shape: {len(self_ambg_slices)}, moving on to "
-          f" range-Doppler video creation.")
-    print("Creating RD plots array for video")
+    np.save(directory + r'\rd_slice_matrix_2.npy', rd_slices)
+    print(f"Completed range-Doppler slicing of cross-correlation matrix. rd_slices shape: {len(rd_slices)}. RD Slices saved to {directory}.")
+
     rd_plots = []
     for slice in rd_slices:
         slice_plot = (20 * np.log10(np.abs(slice) / np.max(np.abs(slice))))
@@ -151,6 +152,11 @@ for capture in captures:
 
     #DSI CLEANING CODE
     if DSI_cleaning_flag:
+
+        self_ambg_slices, _, _, _ = DSP.passive_range_Doppler_slicing(self_ambg_matrix, cpi_length, cpi_overlap,
+                                                                      PRF, rd_window, wavelength)
+        print(f"Completed self-ambiguity matrix slicing. self_ambg_slices shape: {len(self_ambg_slices)}, moving on to "
+              f" range-Doppler video creation.")
 
         p = 0.1 #Loop Gain
         threshold = 10e-4 #Absolute magnitue threshold

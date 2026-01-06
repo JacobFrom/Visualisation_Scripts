@@ -300,7 +300,7 @@ def passive_processing(surv_iq, ref_iq, seg_s, seg_percent, Fs, max_lag_samples,
     dec_surv_channel = seg_surv_channel[:, 0:int(cc_size)]  # Decimate the surveillance channel
     print(f"Decimated reference channel shape: {dec_ref_channel.shape}, Decimated surveillance channel shape: {dec_surv_channel.shape}")
 
-    #Here we begin the time domain cross-correlation processing
+    #Here we begin the cross-correlation processing
     #Start with specifying the CC matrix idx of interest for extraction later
     num_range_bins_out = max_lag_samples - min_lag_samples + 1  # Number of range bins in the output
 
