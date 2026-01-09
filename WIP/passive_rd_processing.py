@@ -7,7 +7,7 @@ from scipy import signal
 # Below are the parameters of the radar capture and fixed processing parameters. Generally don't change these apart from
 # the CF/Decimation factor which will be capture dependent.
 c = 3e8
-centre_freq = 570e6  # active centre frequency
+centre_freq = 494e6  # active centre frequency
 decimation_factor = 32  # Decimation factor used during capture
 Fs = 3.84e9  # Sample rate after decimation
 d_Fs = Fs / (8 * decimation_factor)  # Decimated sample rate
@@ -17,7 +17,7 @@ seg_percent = 100 #Number of segments used in xcorr
 #These are the changable parameters of the processing, they will affect the correlations.
 min_range = 0  # Minimum range in meters
 min_lag_samples = np.ceil(min_range * d_Fs / c).astype(int)  # Minimum lag in samples
-max_range = 8000  # Maximum range in meters
+max_range = 3000  # Maximum range in meters
 max_lag_samples = np.ceil(max_range * d_Fs / c).astype(int)  # Maximum lag in samples
 
 #These are the parameters of the range-Doppler processing, they will affect the range-Doppler map and subsequent video.
@@ -30,7 +30,7 @@ wavelength = c / centre_freq  # Wavelength of the radar signal
 #These are the parameters of the range-Doppler video creation, they will affect the video output.
 CMAP = 'viridis'  # Colormap for the range-Doppler video
 
-unfiltered_VIDEO_FILENAME = '8km_no_ECA_filter_heli_vid'  # Output video filename
+unfiltered_VIDEO_FILENAME = '3km_no_ECA_filter_take_off_vid'  # Output video filename
 unfiltered_VMIN = -50  # Min value for the color scale (dB) - adjust as needed
 unfiltered_VMAX = 0  # Max value for the color scale (dB)
 vid_x_lim = [0, max_range]  # X-axis limits for the video
@@ -42,17 +42,16 @@ filtered_VMAX = 0
 #Decide here if you want to batch process or process individual datasets
 batch_process_flag = False # Set to True to process all datasets in the directory, False to process a single dataset
 
-DSI_cleaning_flag = False
 
 correlation_exists_flag = False
 filtered_iq_exists_flag = False
 
-experiment_directory = fr'D:\ARESTOR\Data\Ulm_trial\tests\day_2' # Directory containing the experiment data
+experiment_directory = fr'G:\ARESTOR_DATA\SIREN\east_fort_day_1' # Directory containing the experiment data
 
 if batch_process_flag:
     captures = os.listdir(experiment_directory)
 else:
-    captures = ['ulm_day_2_heli']  # Set to a specific capture directory if not batch processing
+    captures = ['east_fort_capture_10']  # Set to a specific capture directory if not batch processing
 
 for capture in captures:
 
@@ -80,7 +79,7 @@ for capture in captures:
         print(f"Completed cross-correlation of data. self_ambg_matrix shape: {self_ambg_matrix.shape}, cc_matrix shape: "
               f"{cc_matrix.shape}, cc_lags shape: . Deleting raw data to save memory.")
         print(f"Saving filtered CC_matrix to {directory}")
-        np.save(directory + r'\8k_filtered_cc_matrix.npy', cc_matrix)
+        np.save(directory + r'\3k_filtered_cc_matrix.npy', cc_matrix)
 
     else:
         ref_data = np.load(directory + r'\passive_ref_output.npy')
@@ -104,7 +103,7 @@ for capture in captures:
               f"{cc_matrix.shape}, cc_lags shape: . Deleting raw data to save memory.")
 
         print("Saving CC_matrix and self_ambg_matrix to harddrive")
-        np.save(directory + r'\8km_cc_matrix.npy', cc_matrix)
+        np.save(directory + r'\3km_cc_matrix.npy', cc_matrix)
         #np.save(directory + r'\self_ambg_matrix.npy', self_ambg_matrix)
 
         del ref_iq, surv_iq  # Release memory if I/Q parts are large
@@ -144,51 +143,6 @@ for capture in captures:
                             unfiltered_VIDEO_FILENAME, doppler_limit, sharpening=False)
 
 
-    #DSI CLEANING CODE
-    if DSI_cleaning_flag:
-
-        self_ambg_slices, _, _, _ = DSP.passive_range_Doppler_slicing(self_ambg_matrix, cpi_length, cpi_overlap,
-                                                                      PRF, rd_window, wavelength)
-        print(f"Completed self-ambiguity matrix slicing. self_ambg_slices shape: {len(self_ambg_slices)}, moving on to "
-              f" range-Doppler video creation.")
-
-        p = 0.1 #Loop Gain
-        threshold = 10e-4 #Absolute magnitue threshold
-        max_iterations = 100 #Maximum number of CLEANing iterations per slice
-        num_slices = int(len(rd_slices))
-        middle_cpi_idx = int(np.floor((num_slices / 2))) #Because of pythons 0 based indexing this may or may not be wrong. If wrong add +1
-        doppler_bins_self = self_ambg_slices[middle_cpi_idx].shape[0]
-        zero_doppler_idx_self = int(np.floor(doppler_bins_self) / 2)
-        self_ambg_zero_doppler_cut = self_ambg_slices[middle_cpi_idx][zero_doppler_idx_self,:]
-        #Now send to DSI function
-
-        cleaned_rd_slices = []
-
-        for i in range(num_slices):
-            current_caf_slice = rd_slices[i]
-            cleaned_slice = DSP.simple_zero_doppler_cleaning(rd_slices[i], self_ambg_zero_doppler_cut, max_iterations, p, threshold)
-            cleaned_rd_slices.append(cleaned_slice)
-            print(f"Finished Cleaning Slice {len(cleaned_rd_slices)} of {len(rd_slices)} Slices.")
-
-        print("Finished DSI CLEAN operations")
-
-        cleaned_rd_plots = []
-        for cleaned_slice in cleaned_rd_slices:
-            clean_plot = (20 * np.log10(np.abs(cleaned_slice) / np.max(np.abs(cleaned_slice))))
-            cleaned_rd_plots.append(clean_plot)
-            print(f"Appended slice {len(cleaned_rd_plots)}")
-
-        print(f"Finished creating cleaned plots. cleaned_rd_plots shape: {len(cleaned_rd_plots)}")
-    filtered_rd_video_flag = False
-
-    if filtered_rd_video_flag:
-        FPS = 1 / ((capture_period / number_cpi))
-        VIDEO_SAVE = os.path.join(directory, filtered_VIDEO_FILENAME)
-        doppler_limit = [velocity_axis[0], velocity_axis[-1]]
-        DSP.create_rd_video(FPS, cleaned_rd_plots, PRF, cpi_stride, range_axis_m, velocity_axis,
-                            filtered_VMIN, filtered_VMAX, CMAP, vid_x_lim, directory,
-                            filtered_VIDEO_FILENAME, doppler_limit, sharpening=False)
-
-
+print("Have you checked the centre frequency and decimation factor are correct for this capture?")
 
 

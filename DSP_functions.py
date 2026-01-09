@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import scipy.signal as signal
 import matplotlib.animation as animation
 import time
+from scipy.signal import get_window, chirp
+import scipy.fft as fft
 
 
 def plot_RTI(beat_frequencies_array, range_axis, time_axis, v_min, v_max, CMAP, x_lim, directory, save_as):
@@ -111,8 +113,8 @@ def range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_win
     print("CPI stride:", cpi_stride)
 
     #configure the axis for the range-Doppler slices
-    slice_doppler_axis_unshifted = np.fft.fftfreq(pulses_per_cpi, d=pulse_interval) #This calculates doppler axis in Hz
-    slice_doppler_axis = np.fft.fftshift(slice_doppler_axis_unshifted) #Shift to center zero frequency
+    slice_doppler_axis_unshifted = fft.fftfreq(pulses_per_cpi, d=pulse_interval) #This calculates doppler axis in Hz
+    slice_doppler_axis = fft.fftshift(slice_doppler_axis_unshifted) #Shift to center zero frequency
     velocity_axis = (wavelength*slice_doppler_axis) / 2 # Convert to velocity in m/s
 
     #Now onto the slicing
@@ -122,8 +124,8 @@ def range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_win
         end_index = start_index + pulses_per_cpi
 
         windowed_cpi = beat_frequencies[start_index:end_index] * window[:, np.newaxis]  # Apply the window to the current CPI
-        rd_slice = np.fft.fft(windowed_cpi, axis=0)
-        rd_slice = np.fft.fftshift(rd_slice, axes=0)
+        rd_slice = fft.fft(windowed_cpi, axis=0)
+        rd_slice = fft.fftshift(rd_slice, axes=0)
         slice_plot = (20 * np.log10(np.abs(rd_slice) / np.max(np.abs(rd_slice))))
 
         rd_slices_list.append(slice_plot)  # Append the slice to the list
@@ -329,53 +331,7 @@ def passive_processing(surv_iq, ref_iq, seg_s, seg_percent, Fs, max_lag_samples,
     #return self_ambg_matrix, cc_matrix #cc_lags
     return cc_matrix
 
-def simple_zero_doppler_cleaning(caf_slice, self_ambg_zero_doppler, max_iterations, loop_gain_p, threshold_abs):
 
-
-
-    doppler_bins, range_bins = np.shape(caf_slice)
-    zero_doppler_idx = doppler_bins // 2
-    print(f"Number of doppler bins = {doppler_bins}, zero doppler idx = {zero_doppler_idx}")
-    self_ambg_zero_doppler = self_ambg_zero_doppler.flatten()
-    print("Shape of self_ambg_zero_doppler = ", self_ambg_zero_doppler.shape)
-    abs_self_ambg_zero_doppler = np.abs(self_ambg_zero_doppler)
-    peak_idx_self = np.argmax(abs_self_ambg_zero_doppler)
-    normalised_self_ambg_zero_doppler = self_ambg_zero_doppler / self_ambg_zero_doppler[peak_idx_self]
-    center_idx_self_ambg = peak_idx_self
-
-    residual_caf = caf_slice
-
-
-
-    for iter in range(max_iterations):
-        zero_doppler_cut_residual = residual_caf[zero_doppler_idx, :]
-        #peak_abs_val, delay_idx = np.max(np.abs(zero_doppler_cut_residual))
-        peak_abs_val = np.max(np.abs(zero_doppler_cut_residual))
-        delay_idx = np.argmax(np.abs(zero_doppler_cut_residual))
-        if peak_abs_val < threshold_abs:
-            break
-        scale_factor = zero_doppler_cut_residual[delay_idx]
-
-        shift_amount = delay_idx - center_idx_self_ambg
-        shifted_component_zd = np.zeros(range_bins, dtype=normalised_self_ambg_zero_doppler.dtype)
-        #print(f"Dtype of caf_slice: {caf_slice.dtype}")
-        #print(f"Dtype of self_ambg_zero_doppler_input: {self_ambg_zero_doppler.dtype}")
-        if shift_amount == 0:
-            shifted_component_zd = normalised_self_ambg_zero_doppler
-        elif shift_amount > 0:
-            len_to_copy = min(len(normalised_self_ambg_zero_doppler), range_bins - shift_amount)
-            if len_to_copy > 0:
-                shifted_component_zd[shift_amount : shift_amount + len_to_copy] = normalised_self_ambg_zero_doppler[:len_to_copy]
-        else:
-            len_to_copy = min(len(normalised_self_ambg_zero_doppler), range_bins + shift_amount)
-            if len_to_copy > 0:
-                shifted_component_zd[: len_to_copy] = normalised_self_ambg_zero_doppler[-shift_amount : -shift_amount + len_to_copy]
-        component_to_subtract = loop_gain_p * scale_factor * shifted_component_zd
-        residual_caf[zero_doppler_idx, :] = residual_caf[zero_doppler_idx, :] - component_to_subtract
-
-    cleaned_caf_slice = residual_caf
-
-    return cleaned_caf_slice
 
 def passive_range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf, rd_window, wavelength):
     """
@@ -410,8 +366,8 @@ def passive_range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf
 
 
     #configure the axis for the range-Doppler slices
-    slice_doppler_axis_unshifted = np.fft.fftfreq(pulses_per_cpi, d=pulse_interval) #This calculates doppler axis in Hz
-    slice_doppler_axis = np.fft.fftshift(slice_doppler_axis_unshifted) #Shift to center zero frequency
+    slice_doppler_axis_unshifted = fft.fftfreq(pulses_per_cpi, d=pulse_interval) #This calculates doppler axis in Hz
+    slice_doppler_axis = fft.fftshift(slice_doppler_axis_unshifted) #Shift to center zero frequency
     velocity_axis = (wavelength*slice_doppler_axis) / 2 # Convert to velocity in m/s
 
     #Now onto the slicing
@@ -421,8 +377,8 @@ def passive_range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf
         end_index = start_index + pulses_per_cpi
 
         windowed_cpi = beat_frequencies[start_index:end_index] * window[:, np.newaxis]  # Apply the window to the current CPI
-        rd_slice = np.fft.fft(windowed_cpi, axis=0)
-        rd_slice = np.fft.fftshift(rd_slice, axes=0)
+        rd_slice = fft.fft(windowed_cpi, axis=0)
+        rd_slice = fft.fftshift(rd_slice, axes=0)
 
 
         rd_slices_list.append(rd_slice)  # Append the slice to the list
@@ -430,3 +386,63 @@ def passive_range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf
     print(f"Finished processing. Number of slices processed: {len(rd_slices_list)}")
     return rd_slices_list, velocity_axis, number_cpi, cpi_stride
 
+def plot_micro_doppler(range_bin, matrix, matrix_type, cpi, cpi_overlap, prf, Fs, centre_freq, slice_number=None):
+    """
+    Plots the micro-Doppler spectrogram for a selected range bin.
+
+    Parameters:
+    - range_bin: Index of the range bin to analyze.
+    - matrix: 2D numpy array containing either beat frequencies or cross-correlation data.
+    - matrix_type: Type of matrix provided ('beat_frequencies' or 'cc_matrix').
+    - cpi: Coherent processing interval in seconds.
+    - cpi_overlap: Overlap between each coherent processing interval.
+    - prf: Pulse repetition frequency in Hz.
+    - Fs: Sample rate after decimation.
+    - centre_freq: Centre frequency of the radar in Hz.
+    - slice_number: (Optional) Slice number for 'cc_matrix' type.
+
+
+    Returns:
+    - None
+    """
+
+    #First stage is to define duration and range bin/bins of interest
+    if matrix_type == 'beat_frequencies':
+        positive_beat_freqs = matrix
+        selected_range_bin = range_bin #Select the range bin that corresponds to where the movement under analysis occured
+        stft_data = positive_beat_freqs[selected_range_bin, :] #This assigns the stft_data variable to the range bin of choice and contains all pulses
+        print("Shape of STFT Data:", stft_data.shape)
+
+        #Next we define the parameters for -the coherent processing intervals:
+        cpi = cpi #Define the coherent processing interval in seconds
+        cpi_overlap = cpi_overlap  #Define the overlap between each coherent processing intervals
+        pulses_per_cpi = int(cpi * prf) #How many pulses to include in each CPI, aka fft length/NFFT points
+        number_of_overlap = int(cpi_overlap * pulses_per_cpi)
+        window_func = get_window('hann', pulses_per_cpi)  # Define the windowing function to be applied to the data
+
+        plt.specgram(stft_data, NFFT=pulses_per_cpi, Fs=Fs, noverlap=number_of_overlap, window=window_func, mode='magnitude', Fc=centre_freq, scale='dB')
+        plt.show()
+    elif matrix_type == 'cc_matrix':
+
+        target_app_seconds = int(np.floor(slice_number / 5))
+        target_app_sample_start_idx = int(target_app_seconds * prf)
+        target_app_sample_end_idx = int((target_app_sample_start_idx + prf))
+
+        selected_range_bin = range_bin
+
+        micro_dop_data= matrix[target_app_sample_start_idx:target_app_sample_end_idx, selected_range_bin]  # This assigns the stft_data variable to the range bin of choice and contains all pulses under study
+        print(f'shape of micro doppler data under test = {micro_dop_data.shape}')
+
+
+        # Next we define the parameters for -the coherent processing intervals:
+        cpi = cpi  # Define the coherent processing interval in seconds
+        cpi_overlap = cpi_overlap  # Define the overlap between each coherent processing intervals
+        pulses_per_cpi = int(cpi * prf)  # How many pulses to include in each CPI, aka fft length/NFFT points
+        number_of_overlap = int(cpi_overlap * pulses_per_cpi)
+        window_func = get_window('hann', pulses_per_cpi)  # Define the windowing function to be applied to the data
+
+        plt.specgram(micro_dop_data, NFFT=pulses_per_cpi, Fs=Fs, noverlap=number_of_overlap,
+                     window=window_func, mode='magnitude', Fc=centre_freq, scale='dB')
+        plt.show()
+    else:
+        print("ERROR: Invalid matrix_type specified. Use 'beat_frequencies' or 'rd_slices'.")
