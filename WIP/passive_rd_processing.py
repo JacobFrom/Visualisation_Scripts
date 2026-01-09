@@ -30,7 +30,7 @@ wavelength = c / centre_freq  # Wavelength of the radar signal
 #These are the parameters of the range-Doppler video creation, they will affect the video output.
 CMAP = 'viridis'  # Colormap for the range-Doppler video
 
-unfiltered_VIDEO_FILENAME = '8km_fixed_ECA_filter_heli_vid'  # Output video filename
+unfiltered_VIDEO_FILENAME = '8km_no_ECA_filter_heli_vid'  # Output video filename
 unfiltered_VMIN = -50  # Min value for the color scale (dB) - adjust as needed
 unfiltered_VMAX = 0  # Max value for the color scale (dB)
 vid_x_lim = [0, max_range]  # X-axis limits for the video
@@ -45,9 +45,9 @@ batch_process_flag = False # Set to True to process all datasets in the director
 DSI_cleaning_flag = False
 
 correlation_exists_flag = False
-filtered_iq_exists_flag = True
+filtered_iq_exists_flag = False
 
-experiment_directory = fr'G:\ARESTOR_DATA\Ulm_trial\tests\day_2' # Directory containing the experiment data
+experiment_directory = fr'D:\ARESTOR\Data\Ulm_trial\tests\day_2' # Directory containing the experiment data
 
 if batch_process_flag:
     captures = os.listdir(experiment_directory)
@@ -86,15 +86,9 @@ for capture in captures:
         ref_data = np.load(directory + r'\passive_ref_output.npy')
         surv_data = np.load(directory + r'\passive_surv_output.npy')
         print("Loaded data")
-        ref_i = ref_data[0::2]  # Select elements 0, 2, 4,... (Real/I)
-        ref_q = ref_data[1::2]  # Select elements 1, 3, 5,... (Imaginary/Q)
-        ref_iq = (ref_i + 1j * ref_q)  # Combine into complex numbers
-        del ref_i, ref_q  #Release memory if I/Q parts are large
-        surv_i = surv_data[0::2]  # Select elements 0, 2, 4,... (Real/I)
-        surv_q = surv_data[1::2]  # Select elements 1, 3, 5,... (Imaginary/Q)
-        surv_iq = (surv_i + 1j * surv_q)  # Combine into complex numbers
-        del surv_i, surv_q  #Release memory if I/Q parts are large
-        del ref_data, surv_data #Release memory if I/Q parts are large
+        ref_iq = (ref_data[0::2] + 1j * ref_data[1::2]).astype(np.complex64)  # Combine into complex numbers
+        surv_iq = (surv_data[0::2] + 1j * surv_data[1::2]).astype(np.complex64)  # Combine into complex numbers
+        del surv_data, ref_data  # Release memory if I/Q parts are large
         np.save(directory + r'\ref_iq', ref_iq)
         np.save(directory + r'\surv_iq', surv_iq)
         capture_period = len(ref_iq) / d_Fs  # Calculate the duration of the capture in seconds
@@ -104,14 +98,14 @@ for capture in captures:
         #self_ambg_matrix, cc_matrix, cc_lags = DSP.passive_processing(surv_iq, ref_iq, seg_s, seg_percent,
         #                                                              d_Fs, max_lag_samples, min_lag_samples)
 
-        self_ambg_matrix, cc_matrix = DSP.passive_processing(surv_iq, ref_iq, seg_s, seg_percent,
-                                                                      d_Fs, max_lag_samples, min_lag_samples)
-        print(f"Completed cross-correlation of data. self_ambg_matrix shape: {self_ambg_matrix.shape}, cc_matrix shape: "
+        cc_matrix = DSP.passive_processing(surv_iq, ref_iq, seg_s, seg_percent,
+                                           d_Fs, max_lag_samples, min_lag_samples)
+        print(f"Completed cross-correlation of data. cc_matrix shape: "
               f"{cc_matrix.shape}, cc_lags shape: . Deleting raw data to save memory.")
 
         print("Saving CC_matrix and self_ambg_matrix to harddrive")
-        np.save(directory + r'\cc_matrix.npy', cc_matrix)
-        np.save(directory + r'\self_ambg_matrix.npy', self_ambg_matrix)
+        np.save(directory + r'\8km_cc_matrix.npy', cc_matrix)
+        #np.save(directory + r'\self_ambg_matrix.npy', self_ambg_matrix)
 
         del ref_iq, surv_iq  # Release memory if I/Q parts are large
         print("Deleted raw data, moving on to range-Doppler processing.")

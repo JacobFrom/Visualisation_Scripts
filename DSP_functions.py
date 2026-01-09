@@ -305,7 +305,7 @@ def passive_processing(surv_iq, ref_iq, seg_s, seg_percent, Fs, max_lag_samples,
     num_range_bins_out = max_lag_samples - min_lag_samples + 1  # Number of range bins in the output
 
     cc_matrix = np.zeros((num_segments, num_range_bins_out), dtype=complex) # Initialize thecross-correlation matrix
-    self_ambg_matrix = np.zeros((num_segments, num_range_bins_out),dtype=complex)
+    #self_ambg_matrix = np.zeros((num_segments, num_range_bins_out),dtype=complex)
 
     start_time = time.perf_counter()
     # Calculate the self-ambiguity matrix for the reference data
@@ -314,19 +314,20 @@ def passive_processing(surv_iq, ref_iq, seg_s, seg_percent, Fs, max_lag_samples,
         temp_cc_matrix, temp_lags = py_xcorr(dec_surv_channel[i, :], dec_ref_channel[i, :],
                                              max_lag=max_lag_samples,
                                              min_lag=min_lag_samples)
-        temp_sa_matrix, _ = py_xcorr(dec_ref_channel[i, :], dec_ref_channel[i, :],
-                                                 max_lag=max_lag_samples,
-                                                min_lag=min_lag_samples)
+        #temp_sa_matrix, _ = py_xcorr(dec_ref_channel[i, :], dec_ref_channel[i, :],
+                                                 #max_lag=max_lag_samples,
+                                                #min_lag=min_lag_samples)
 
 
         cc_matrix[i, :] = temp_cc_matrix
-        self_ambg_matrix[i, :] = temp_sa_matrix
+        #self_ambg_matrix[i, :] = temp_sa_matrix
         print(f"Finished processing {i} of {num_segments} segments of data.")
     #cc_lags = temp_lags # Store the lags from the last segment processed
     end_time = time.perf_counter()
     processing_duration = end_time - start_time
     print(f"Finished processing {num_segments} segments of data in {processing_duration:.2f} seconds.")
-    return self_ambg_matrix, cc_matrix #cc_lags
+    #return self_ambg_matrix, cc_matrix #cc_lags
+    return cc_matrix
 
 def simple_zero_doppler_cleaning(caf_slice, self_ambg_zero_doppler, max_iterations, loop_gain_p, threshold_abs):
 

@@ -5,7 +5,7 @@ import DetProcessing as dp
 import matplotlib.pyplot as plt
 
 # Define the folder path where the data is stored
-directory = fr'G:\ARESTOR_DATA\Ulm_trial\tests\day_2\ulm_day_2_heli\passive_data_test_1\CFAR_testing'
+directory = fr'D:\ARESTOR\Data\Ulm_trial\tests\day_2\ulm_day_2_heli\passive_data_test_1'
 
 # Load the large 3D array containing all the Range-Doppler matrices
 rd_matrices = np.load(directory + r'\rd_slice_matrix_2.npy')
@@ -76,7 +76,7 @@ else:
 # ==========================================
 
 # Choose which slice (frame) to look at
-slice_number = 154
+slice_number = 308
 
 # Extract the specific Hit matrix for this frame
 hit_matrix = hit_results[slice_number]
