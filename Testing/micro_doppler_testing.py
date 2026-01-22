@@ -4,6 +4,7 @@ from CaCFAR import CA_CFAR as CFAR
 import DetProcessing as dp
 import matplotlib.pyplot as plt
 import DSP_functions as DSP
+import os
 
 # Define the folder path where the data is stored
 directory = fr'G:\ARESTOR_DATA\SIREN\east_fort_day_1\east_fort_capture_10\passive_data_test_1'
@@ -11,7 +12,7 @@ directory = fr'G:\ARESTOR_DATA\SIREN\east_fort_day_1\east_fort_capture_10\passiv
 #First, set all the parameters for the CFAR processing
 
 # Load the 3D array containing all the Range-Doppler matrices
-rd_matrices = np.load(directory + r'\rd_slice_matrix_2.npy')
+rd_matrices = np.load(directory + r'\rd_slices\rd_slice_matrix_2.npy')
 cc_matrix  = np.load(directory + r'\3km_cc_matrix.npy')
 #Set the CA window parameters, format: [window width, window height, guard cell width, guard cell height]
 window_params = [8, 8, 2, 2]
@@ -85,24 +86,27 @@ if not CFAR_hit_matrix_exists_flag:
 
     print(f"CFAR processing time Complete. Time taken: {end - start} seconds. Saving results...")
     # Define file paths for saving the output
-    hit_save = directory + r'\cfar_hit_matrix.npy'
-    snr_save = directory + r'\cfar_sinr_matrix.npy'
+    cfar_directory = directory + r'\cfar_results'
+    os.makedirs(cfar_directory, exist_ok=True)
+    hit_save = cfar_directory + fr'\{max_range_m}_cfar_hit_matrix.npy'
+    snr_save = cfar_directory + fr'\{max_range_m}_cfar_sinr_matrix.npy'
 
     # Save the list of hit matrices to disk
     np.save(hit_save, hit_results)
     # Save the list of SNR matrices to disk (Corrected from hit_results to snr_results)
     np.save(snr_save, snr_results)
-    print(f"CFAR processing complete. Hit matrix and SNR matrix saved in {directory}.")
+    print(f"CFAR processing complete. Hit matrix and SNR matrix saved in {cfar_directory}.")
 
 else:
     print("Loading pre-computed CFAR results from disk...")
     # Load the previously saved boolean hit matrices
-    hit_results = np.load(directory + r'\cfar_hit_matrix.npy')
+    hit_results = np.load(directory + r'\cfar_results\cfar_hit_matrix.npy')
     # Load the previously saved SNR matrices
-    snr_results = np.load(directory + r'\cfar_sinr_matrix.npy')
+    snr_results = np.load(directory + r'\cfar-results\cfar_sinr_matrix.npy')
     print("CFAR results loaded.")
 
 # ==========================================
 #MICRO-DOPPLER PROCESSING SECTION
 # ==========================================
-DSP.plot_micro_doppler(100, cc_matrix, 'cc_matrix', cpi, cpi_overlap, prf, Fs, centre_freq, slice_number=31)
+microdoppler_directory = directory + r'\micro_doppler_plots'
+DSP.plot_micro_doppler(100, cc_matrix, 'cc_matrix', cpi, cpi_overlap, prf, Fs, centre_freq, slice_number=31, save_directory=microdoppler_directory)

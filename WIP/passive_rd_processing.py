@@ -29,15 +29,10 @@ wavelength = c / centre_freq  # Wavelength of the radar signal
 
 #These are the parameters of the range-Doppler video creation, they will affect the video output.
 CMAP = 'viridis'  # Colormap for the range-Doppler video
-
-unfiltered_VIDEO_FILENAME = '3km_no_ECA_filter_take_off_vid'  # Output video filename
+unfiltered_VIDEO_FILENAME = f'{max_range}_no_ECA_filter_take_off_vid'  # Output video filename
 unfiltered_VMIN = -50  # Min value for the color scale (dB) - adjust as needed
 unfiltered_VMAX = 0  # Max value for the color scale (dB)
 vid_x_lim = [0, max_range]  # X-axis limits for the video
-
-filtered_VIDEO_FILENAME = f'CLEANed_threshold_1_{unfiltered_VIDEO_FILENAME}'
-filtered_VMIN = -50
-filtered_VMAX = 0
 
 #Decide here if you want to batch process or process individual datasets
 batch_process_flag = False # Set to True to process all datasets in the directory, False to process a single dataset
@@ -61,7 +56,7 @@ for capture in captures:
     if correlation_exists_flag:
         if not filtered_iq_exists_flag:
             cc_matrix = np.load(directory + r'\cc_matrix.npy')
-            self_ambg_matrix = np.load(directory + r'\self_ambg_matrix.npy')
+
             capture_period = 70  # Calculate the duration of the capture in seconds
             print("Unfiltered Cross-Correlation Matrix and Self-Ambiguity Matrix successfully loaded from memory. No Need to load IQ")
         else:
@@ -74,12 +69,12 @@ for capture in captures:
         capture_period = len(ref_iq) / d_Fs  # Calculate the duration of the capture in seconds
         print(f"IQ Matrices successfully loaded from memory. reference data shape: {ref_iq.shape}, surveillance data shape:"
               f" {surv_iq.shape}")
-        self_ambg_matrix, cc_matrix = DSP.passive_processing(surv_iq, ref_iq, seg_s, seg_percent,
+        cc_matrix = DSP.passive_processing(surv_iq, ref_iq, seg_s, seg_percent,
                                                                       d_Fs, max_lag_samples, min_lag_samples)
-        print(f"Completed cross-correlation of data. self_ambg_matrix shape: {self_ambg_matrix.shape}, cc_matrix shape: "
+        print(f"Completed cross-correlation of data. cc_matrix shape: "
               f"{cc_matrix.shape}, cc_lags shape: . Deleting raw data to save memory.")
         print(f"Saving filtered CC_matrix to {directory}")
-        np.save(directory + r'\3k_filtered_cc_matrix.npy', cc_matrix)
+        np.save(directory + fr'\{max_range}_filtered_cc_matrix.npy', cc_matrix)
 
     else:
         ref_data = np.load(directory + r'\passive_ref_output.npy')
@@ -102,9 +97,9 @@ for capture in captures:
         print(f"Completed cross-correlation of data. cc_matrix shape: "
               f"{cc_matrix.shape}, cc_lags shape: . Deleting raw data to save memory.")
 
-        print("Saving CC_matrix and self_ambg_matrix to harddrive")
-        np.save(directory + r'\3km_cc_matrix.npy', cc_matrix)
-        #np.save(directory + r'\self_ambg_matrix.npy', self_ambg_matrix)
+        print("Saving CC_matrix to harddrive")
+        np.save(directory + fr'\{max_range}_cc_matrix.npy', cc_matrix)
+
 
         del ref_iq, surv_iq  # Release memory if I/Q parts are large
         print("Deleted raw data, moving on to range-Doppler processing.")
@@ -121,8 +116,10 @@ for capture in captures:
     rd_slices, velocity_axis, number_cpi, cpi_stride = DSP.passive_range_Doppler_slicing(cc_matrix, cpi_length,
                                                                                       cpi_overlap, PRF, rd_window,
                                                                                       wavelength)
-    np.save(directory + r'\rd_slice_matrix_2.npy', rd_slices)
-    print(f"Completed range-Doppler slicing of cross-correlation matrix. rd_slices shape: {len(rd_slices)}. RD Slices saved to {directory}.")
+    rd_slice_directory = directory + r'\rd_slices'
+    os.makedirs(rd_slice_directory, exist_ok=True)
+    np.save(rd_slice_directory + fr'\{max_range}_rd_slice_matrix.npy', rd_slices)
+    print(f"Completed range-Doppler slicing of cross-correlation matrix. rd_slices shape: {len(rd_slices)}. RD Slices saved to {rd_slice_directory}.")
 
     rd_plots = []
     for slice in rd_slices:
@@ -135,7 +132,9 @@ for capture in captures:
     if unfiltered_rd_video_flag:
 
         FPS = 1 / ((capture_period / number_cpi))  # Frames per second for the output video
-        VIDEO_SAVE = os.path.join(directory, unfiltered_VIDEO_FILENAME)
+        video_directory = directory + r'\rd_videos'  # Directory to save the output videos
+        os.makedirs(video_directory, exist_ok=True)
+        VIDEO_SAVE = os.path.join(video_directory, unfiltered_VIDEO_FILENAME)
         #doppler_limit = [velocity_axis[0], velocity_axis[-1]]
         doppler_limit = [-100, 100]
         DSP.create_rd_video(FPS, rd_plots, PRF, cpi_stride, range_axis_m, velocity_axis,

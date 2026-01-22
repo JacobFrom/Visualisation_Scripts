@@ -386,7 +386,7 @@ def passive_range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf
     print(f"Finished processing. Number of slices processed: {len(rd_slices_list)}")
     return rd_slices_list, velocity_axis, number_cpi, cpi_stride
 
-def plot_micro_doppler(range_bin, matrix, matrix_type, cpi, cpi_overlap, prf, Fs, centre_freq, slice_number=None):
+def plot_micro_doppler(range_bin, matrix, matrix_type, cpi, cpi_overlap, prf, Fs, centre_freq, slice_number=None, save_directory=None):
     """
     Plots the micro-Doppler spectrogram for a selected range bin.
 
@@ -421,7 +421,11 @@ def plot_micro_doppler(range_bin, matrix, matrix_type, cpi, cpi_overlap, prf, Fs
         window_func = get_window('hann', pulses_per_cpi)  # Define the windowing function to be applied to the data
 
         plt.specgram(stft_data, NFFT=pulses_per_cpi, Fs=Fs, noverlap=number_of_overlap, window=window_func, mode='magnitude', Fc=centre_freq, scale='dB')
-        plt.show()
+        if save_directory:
+            plt.savefig(save_directory, dpi=300, bbox_inches='tight')
+            plt.show()
+        else:
+            plt.show()
     elif matrix_type == 'cc_matrix':
 
         target_app_seconds = int(np.floor(slice_number / 5))
@@ -443,6 +447,13 @@ def plot_micro_doppler(range_bin, matrix, matrix_type, cpi, cpi_overlap, prf, Fs
 
         plt.specgram(micro_dop_data, NFFT=pulses_per_cpi, Fs=Fs, noverlap=number_of_overlap,
                      window=window_func, mode='magnitude', Fc=centre_freq, scale='dB')
-        plt.show()
+        if save_directory:
+            os.makedirs(save_directory, exist_ok=True)
+            plot_name = f'micro_doppler_range_bin_{range_bin}_slice_{slice_number}.png'
+            save_directory = os.path.join(save_directory, plot_name)
+            plt.savefig(save_directory, dpi=300, bbox_inches='tight')
+            plt.show()
+        else:
+            plt.show()
     else:
         print("ERROR: Invalid matrix_type specified. Use 'beat_frequencies' or 'rd_slices'.")

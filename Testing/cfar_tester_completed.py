@@ -3,12 +3,13 @@ import numpy as np
 from old_scripts.CaCFAR_orig import CA_CFAR as CFAR
 import DetProcessing as dp
 import matplotlib.pyplot as plt
+import os
 
 # Define the folder path where the data is stored
 directory = fr'G:\ARESTOR_DATA\SIREN\east_fort_day_1\east_fort_capture_10\passive_data_test_1'
 
 # Load the large 3D array containing all the Range-Doppler matrices
-rd_matrices = np.load(directory + r'\rd_slice_matrix_2.npy')
+rd_matrices = np.load(directory + r'\rd_slices\rd_slice_matrix.npy')
 
 #Set the CA window parameters, format: [window width, window height, guard cell width, guard cell height]
 window_params = [8, 8, 2, 2]
@@ -54,21 +55,23 @@ if not CFAR_hit_matrix_exists_flag:
 
     print(f"CFAR processing time Complete. Time taken: {end - start} seconds. Saving results...")
     # Define file paths for saving the output
-    hit_save = directory + r'\cfar_hit_matrix.npy'
-    snr_save = directory + r'\cfar_sinr_matrix.npy'
+    cfar_directory = directory + r'\cfar_results'
+    os.makedirs(cfar_directory, exist_ok=True)
+    hit_save = cfar_directory + fr'\{max_range_m}_cfar_hit_matrix.npy'
+    snr_save = cfar_directory + fr'\{max_range_m}_cfar_sinr_matrix.npy'
 
     # Save the list of hit matrices to disk
     np.save(hit_save, hit_results)
     # Save the list of SNR matrices to disk (Corrected from hit_results to snr_results)
     np.save(snr_save, snr_results)
-    print(f"CFAR processing complete. Hit matrix and SNR matrix saved in {directory}.")
+    print(f"CFAR processing complete. Hit matrix and SNR matrix saved in {cfar_directory}.")
 
 else:
     print("Loading pre-computed CFAR results from disk...")
     # Load the previously saved boolean hit matrices
-    hit_results = np.load(directory + r'\cfar_hit_matrix.npy')
+    hit_results = np.load(directory + fr'\cfar_results\{max_range_m}_cfar_hit_matrix.npy')
     # Load the previously saved SNR matrices
-    snr_results = np.load(directory + r'\cfar_sinr_matrix.npy')
+    snr_results = np.load(directory + fr'\cfar_results\{max_range_m}_cfar_sinr_matrix.npy')
     print("CFAR results loaded.")
 
 # ==========================================
@@ -173,3 +176,5 @@ ax[1].set_ylabel("Velocity (m/s)")
 plt.tight_layout()
 # Render the final window
 plt.show()
+plt.savefig(directory + fr'\cfar_results\cfar_detection_slice_{slice_number}.png')
+print("Plots generated and saved.")
