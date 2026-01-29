@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 import os
 
 # Define the folder path where the data is stored
-directory = fr'G:\ARESTOR_DATA\SIREN\east_fort_day_1\east_fort_capture_10\passive_data_test_1'
+directory = fr'D:\ARESTOR\Data\east_fort_capture_2\passive_data_test_1'
 
 # Load the large 3D array containing all the Range-Doppler matrices
-rd_matrices = np.load(directory + r'\rd_slices\rd_slice_matrix.npy')
+rd_matrices = np.load(directory + r'\rd_slices\6000_rd_slice_matrix.npy')
 
 #Set the CA window parameters, format: [window width, window height, guard cell width, guard cell height]
 window_params = [8, 8, 2, 2]
@@ -21,7 +21,7 @@ data_shape = rd_matrices[0].shape
 max_range_m = data_shape[1] * 20
 
 # Toggle this flag: False = calculate fresh CFAR data; True = load previous results
-CFAR_hit_matrix_exists_flag = True
+CFAR_hit_matrix_exists_flag = False
 
 # ==========================================
 # CFAR PROCESSING SECTION
@@ -79,7 +79,7 @@ else:
 # ==========================================
 
 # Choose which slice (frame) to look at
-slice_number = 31
+slice_number = 67
 
 # Extract the specific Hit matrix for this frame
 hit_matrix = hit_results[slice_number]
@@ -98,7 +98,7 @@ pulse_interval = 1 / int(data_shape[0])
 # Speed of light constant
 c = 3e8
 # Carrier frequency of the radar
-centre_freq = 570e6
+centre_freq = 494e6
 # Calculate signal wavelength
 wavelength = c / centre_freq
 

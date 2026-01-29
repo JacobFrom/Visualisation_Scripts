@@ -17,7 +17,7 @@ seg_percent = 100 #Number of segments used in xcorr
 #These are the changable parameters of the processing, they will affect the correlations.
 min_range = 0  # Minimum range in meters
 min_lag_samples = np.ceil(min_range * d_Fs / c).astype(int)  # Minimum lag in samples
-max_range = 3000  # Maximum range in meters
+max_range = 6000  # Maximum range in meters
 max_lag_samples = np.ceil(max_range * d_Fs / c).astype(int)  # Maximum lag in samples
 
 #These are the parameters of the range-Doppler processing, they will affect the range-Doppler map and subsequent video.
@@ -29,7 +29,7 @@ wavelength = c / centre_freq  # Wavelength of the radar signal
 
 #These are the parameters of the range-Doppler video creation, they will affect the video output.
 CMAP = 'viridis'  # Colormap for the range-Doppler video
-unfiltered_VIDEO_FILENAME = f'{max_range}_no_ECA_filter_take_off_vid'  # Output video filename
+unfiltered_VIDEO_FILENAME = f'{max_range}_no_ECA_filter'  # Output video filename
 unfiltered_VMIN = -50  # Min value for the color scale (dB) - adjust as needed
 unfiltered_VMAX = 0  # Max value for the color scale (dB)
 vid_x_lim = [0, max_range]  # X-axis limits for the video
@@ -41,12 +41,12 @@ batch_process_flag = False # Set to True to process all datasets in the director
 correlation_exists_flag = False
 filtered_iq_exists_flag = False
 
-experiment_directory = fr'G:\ARESTOR_DATA\SIREN\east_fort_day_1' # Directory containing the experiment data
+experiment_directory = fr'D:\ARESTOR\Data' # Directory containing the experiment data
 
 if batch_process_flag:
     captures = os.listdir(experiment_directory)
 else:
-    captures = ['east_fort_capture_10']  # Set to a specific capture directory if not batch processing
+    captures = ['east_fort_capture_2']  # Set to a specific capture directory if not batch processing
 
 for capture in captures:
 
@@ -134,11 +134,11 @@ for capture in captures:
         FPS = 1 / ((capture_period / number_cpi))  # Frames per second for the output video
         video_directory = directory + r'\rd_videos'  # Directory to save the output videos
         os.makedirs(video_directory, exist_ok=True)
-        VIDEO_SAVE = os.path.join(video_directory, unfiltered_VIDEO_FILENAME)
+        #VIDEO_SAVE = os.path.join(video_directory, unfiltered_VIDEO_FILENAME)
         #doppler_limit = [velocity_axis[0], velocity_axis[-1]]
         doppler_limit = [-100, 100]
         DSP.create_rd_video(FPS, rd_plots, PRF, cpi_stride, range_axis_m, velocity_axis,
-                            unfiltered_VMIN, unfiltered_VMAX, CMAP, vid_x_lim, directory,
+                            unfiltered_VMIN, unfiltered_VMAX, CMAP, vid_x_lim, video_directory,
                             unfiltered_VIDEO_FILENAME, doppler_limit, sharpening=False)
 
 
