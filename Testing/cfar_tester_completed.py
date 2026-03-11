@@ -6,15 +6,15 @@ import matplotlib.pyplot as plt
 import os
 
 # Define the folder path where the data is stored
-directory = fr'G:\ARESTOR_DATA\SIREN\east_fort_day_1\east_fort_capture_10\passive_data_test_1'
+directory = fr'G:\ARESTOR_DATA\Ulm_trial\tests\day_2\ulm_day_2_heli\passive_data_test_1\CFAR_testing'
 
 # Load the large 3D array containing all the Range-Doppler matrices
-rd_matrices = np.load(directory + r'\rd_slices\rd_slice_matrix.npy')
+rd_matrices = np.load(directory + r'\rd_slice_matrix_2.npy')
 
 #Set the CA window parameters, format: [window width, window height, guard cell width, guard cell height]
 window_params = [8, 8, 2, 2]
 # Set the detection threshold in dB
-threshold_dB = 12
+threshold_dB = 13
 # Get the shape of a single matrix (rows=Doppler, cols=Range) for configuration
 data_shape = rd_matrices[0].shape
 # Calculate max range in meters, this assumes 20m per range cell (True for single channel DVB-T passive radar)
@@ -79,7 +79,7 @@ else:
 # ==========================================
 
 # Choose which slice (frame) to look at
-slice_number = 31
+slice_number = 282
 
 # Extract the specific Hit matrix for this frame
 hit_matrix = hit_results[slice_number]
