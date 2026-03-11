@@ -7,7 +7,7 @@ from scipy import signal
 # Below are the parameters of the radar capture and fixed processing parameters. Generally don't change these apart from
 # the CF/Decimation factor which will be capture dependent.
 c = 3e8
-centre_freq = 570e6  # active centre frequency
+centre_freq = 494e6  # active centre frequency
 decimation_factor = 32  # Decimation factor used during capture
 Fs = 3.84e9  # Sample rate after decimation
 d_Fs = Fs / (8 * decimation_factor)  # Decimated sample rate
@@ -17,7 +17,7 @@ seg_percent = 100 #Number of segments used in xcorr
 #These are the changable parameters of the processing, they will affect the correlations.
 min_range = 0  # Minimum range in meters
 min_lag_samples = np.ceil(min_range * d_Fs / c).astype(int)  # Minimum lag in samples
-max_range = 8000  # Maximum range in meters
+max_range = 6000  # Maximum range in meters
 max_lag_samples = np.ceil(max_range * d_Fs / c).astype(int)  # Maximum lag in samples
 
 #These are the parameters of the range-Doppler processing, they will affect the range-Doppler map and subsequent video.
@@ -29,7 +29,7 @@ wavelength = c / centre_freq  # Wavelength of the radar signal
 
 #These are the parameters of the range-Doppler video creation, they will affect the video output.
 CMAP = 'viridis'  # Colormap for the range-Doppler video
-unfiltered_VIDEO_FILENAME = f'{max_range}_512_half_smooth_weiner_filtered_test'  # Output video filename
+unfiltered_VIDEO_FILENAME = f'{max_range}_no_ECA_filter'  # Output video filename
 unfiltered_VMIN = -50  # Min value for the color scale (dB) - adjust as needed
 unfiltered_VMAX = 0  # Max value for the color scale (dB)
 vid_x_lim = [0, max_range]  # X-axis limits for the video
@@ -39,14 +39,14 @@ batch_process_flag = False # Set to True to process all datasets in the director
 
 
 correlation_exists_flag = False
-filtered_iq_exists_flag = True
+filtered_iq_exists_flag = False
 
-experiment_directory = fr'G:\ARESTOR_DATA\Ulm_trial\tests\day_2' # Directory containing the experiment data
+experiment_directory = fr'D:\ARESTOR\Data' # Directory containing the experiment data
 
 if batch_process_flag:
     captures = os.listdir(experiment_directory)
 else:
-    captures = ['ulm_day_2_heli']  # Set to a specific capture directory if not batch processing
+    captures = ['east_fort_capture_2']  # Set to a specific capture directory if not batch processing
 
 for capture in captures:
 
@@ -65,7 +65,7 @@ for capture in captures:
             print("Filtered Cross-Correlation Matrix successfully loaded from memory. No Need to load IQ")
     elif filtered_iq_exists_flag:
         ref_iq = np.load(directory + r'\ref_iq.npy')
-        surv_iq = np.load(directory + r'\512_half_smooth_weiner_filtered_surv_channel.npy')
+        surv_iq = np.load(directory + r'\filtered_surv_eca_2.npy')
         capture_period = len(ref_iq) / d_Fs  # Calculate the duration of the capture in seconds
         print(f"IQ Matrices successfully loaded from memory. reference data shape: {ref_iq.shape}, surveillance data shape:"
               f" {surv_iq.shape}")
@@ -74,7 +74,7 @@ for capture in captures:
         print(f"Completed cross-correlation of data. cc_matrix shape: "
               f"{cc_matrix.shape}, cc_lags shape: . Deleting raw data to save memory.")
         print(f"Saving filtered CC_matrix to {directory}")
-        np.save(directory + fr'\{max_range}_1_sec_fast_filtered_cc_matrix.npy', cc_matrix)
+        np.save(directory + fr'\{max_range}_filtered_cc_matrix.npy', cc_matrix)
 
     else:
         ref_data = np.load(directory + r'\passive_ref_output.npy')
@@ -98,7 +98,7 @@ for capture in captures:
               f"{cc_matrix.shape}, cc_lags shape: . Deleting raw data to save memory.")
 
         print("Saving CC_matrix to harddrive")
-        np.save(directory + fr'\{max_range}_wiener_cc_matrix.npy', cc_matrix)
+        np.save(directory + fr'\{max_range}_cc_matrix.npy', cc_matrix)
 
 
         del ref_iq, surv_iq  # Release memory if I/Q parts are large
@@ -134,11 +134,11 @@ for capture in captures:
         FPS = 1 / ((capture_period / number_cpi))  # Frames per second for the output video
         video_directory = directory + r'\rd_videos'  # Directory to save the output videos
         os.makedirs(video_directory, exist_ok=True)
-        VIDEO_SAVE = os.path.join(video_directory, unfiltered_VIDEO_FILENAME)
+        #VIDEO_SAVE = os.path.join(video_directory, unfiltered_VIDEO_FILENAME)
         #doppler_limit = [velocity_axis[0], velocity_axis[-1]]
         doppler_limit = [-100, 100]
         DSP.create_rd_video(FPS, rd_plots, PRF, cpi_stride, range_axis_m, velocity_axis,
-                            unfiltered_VMIN, unfiltered_VMAX, CMAP, vid_x_lim, directory,
+                            unfiltered_VMIN, unfiltered_VMAX, CMAP, vid_x_lim, video_directory,
                             unfiltered_VIDEO_FILENAME, doppler_limit, sharpening=False)
 
 
