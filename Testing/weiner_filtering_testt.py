@@ -20,23 +20,21 @@ Fs = 3.84e9  # Sample rate
 d_Fs = Fs / (8 * decimation_factor)  # Decimated sample rate
 block_duration = 0.1
 
-filter_max_range = 100  # Maximum range for filtering in meters
-filter_max_lag_samples = np.ceil(filter_max_range * d_Fs / c).astype(int)  # Maximum lag in samples
-
 filter_taps = 512
+smoothing_weight = 0.3
 
 wavelength = c / centre_freq  # Wavelength of the radar signal
 
 
 batch_process_flag = False  # Set to True to process all datasets in the directory, False to process a single dataset
-iq_matrices_exist_flag = True
+iq_matrices_exist_flag = False
 
-experiment_directory = fr'G:\ARESTOR_DATA\Ulm_trial\tests\day_2' #Directory containing the experiment data
+experiment_directory = fr'G:\ARESTOR_DATA\Ulm_trial\tests\day_3' #Directory containing the experiment data
 
 if batch_process_flag:
     captures = os.listdir(experiment_directory)
 else:
-    captures = ['ulm_day_2_heli']  # Set to a specific capture directory if not batch processing
+    captures = ['ulm_day_3_pc12_4']  # Set to a specific capture directory if not batch processing
 
 for capture in captures:
 
@@ -70,8 +68,8 @@ for capture in captures:
               f" {surv_iq.shape}")
 
 
-    filtered_surv_channel, weights = CC.Wiener_SMI_Batch_Process(ref_iq, surv_iq, filter_taps, d_Fs, block_duration)
+    filtered_surv_channel, weights = CC.Wiener_SMI_Batch_Process(ref_iq, surv_iq, filter_taps, d_Fs, block_duration, smoothing_weight)
     print("Finished filtering data. Saving...")
-    np.save(directory + r'\512_half_smooth_weiner_filtered_surv_channel.npy', filtered_surv_channel)
-    np.save(directory + r'\512_half_smooth_weiner_filtered_weights.npy', weights)
-    print("Successfully saved filtered data")
+    np.save(directory + fr'\{block_duration}_{filter_taps}_{smoothing_weight}_weiner_filtered_surv_channel.npy', filtered_surv_channel)
+    np.save(directory + fr'\{block_duration}_{filter_taps}_{smoothing_weight}_weiner_filter_weights.npy', weights)
+    print(f"Successfully saved filtered data")

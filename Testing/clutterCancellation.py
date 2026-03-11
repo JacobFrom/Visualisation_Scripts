@@ -615,7 +615,7 @@ def fast_pruned_correlation(x, y, K):
     return R[:K].astype(np.complex64)
 
 
-def Wiener_SMI_Batch_Process(ref_ch, surv_ch, K, fs, block_time_sec=0.5):
+def Wiener_SMI_Batch_Process(ref_ch, surv_ch, K, fs, block_time_sec=0.5, smoothing_weight=None):
     """
     Description:
     ------------
@@ -670,20 +670,23 @@ def Wiener_SMI_Batch_Process(ref_ch, surv_ch, K, fs, block_time_sec=0.5):
         r_cross = fast_pruned_correlation(surv_block, ref_block, K)
 
         # 2. Fast Toeplitz Solver to get optimal weights for this exact moment
-        #w = la.solve_toeplitz(r_auto, r_cross)
-        #all_weights.append(w)
-        ##Code to test smoothing:
-        w_current = la.solve_toeplitz(r_auto, r_cross)
+
+        if smoothing_weight is not None:
+
+        #Code to test smoothing:
+            w_current = la.solve_toeplitz(r_auto, r_cross)
         #Apply Exponential Moving Average (EMA) to smooth the transitions
         #alpha controls the memory: 1.0 = no smoothing, 0.1 = heavy smoothing
-        alpha = 0.2
+            alpha = smoothing_weight
 
-        if i == 0:
-            w = w_current  # Initialize for the first block
+            if i == 0:
+                w = w_current  # Initialize for the first block
+            else:
+                w = (alpha * w_current) + ((1 - alpha) * w)
+
         else:
-            w = (alpha * w_current) + ((1 - alpha) * w)
-
-
+            w = la.solve_toeplitz(r_auto, r_cross)
+            all_weights.append(w)
         # 3. Apply the filter weights using fast FFT convolution
         synth_clutter = sig.fftconvolve(ref_block, w, mode='full')[:N_block]
 
