@@ -7,17 +7,17 @@ import DSP_functions as DSP
 import os
 
 # Define the folder path where the data is stored
-directory = fr'G:\ARESTOR_DATA\SIREN\east_fort_day_1\east_fort_capture_10\passive_data_test_1'
+directory = fr'D:\ARESTOR\Data\Ulm_trial\tests\ulm_day_2_heli\passive_data_test_1'
 
 #First, set all the parameters for the CFAR processing
 
 # Load the 3D array containing all the Range-Doppler matrices
-rd_matrices = np.load(directory + r'\rd_slices\rd_slice_matrix_2.npy')
-cc_matrix  = np.load(directory + r'\3km_cc_matrix.npy')
+rd_matrices = np.load(directory + r'\rd_slices\8000_rd_slice_matrix.npy')
+cc_matrix  = np.load(directory + r'\8000_filtered_cc_matrix.npy')
 #Set the CA window parameters, format: [window width, window height, guard cell width, guard cell height]
 window_params = [8, 8, 2, 2]
 # Set the detection threshold in dB
-threshold_dB = 12
+threshold_dB = 25
 # Get the shape of a single matrix (rows=Doppler, cols=Range) for configuration
 data_shape = rd_matrices[0].shape
 # Calculate max range in meters, this assumes 20m per range cell (True for single channel DVB-T passive radar)
@@ -32,7 +32,7 @@ pulse_interval = 1 / int(data_shape[0])
 # Speed of light constant
 c = 3e8
 # Carrier frequency of the radar
-centre_freq = 494e6
+centre_freq = 570e6
 # Calculate signal wavelength
 wavelength = c / centre_freq
 # Generate the frequency axis for Doppler (unshifted)
@@ -43,16 +43,16 @@ slice_doppler_axis = np.fft.fftshift(slice_doppler_axis_unshifted)
 velocity_axis = (wavelength * slice_doppler_axis) / 2
 
 # Toggle this flag: False = calculate fresh CFAR data; True = load previous results
-CFAR_hit_matrix_exists_flag = False
+CFAR_hit_matrix_exists_flag = True
 
 #Next, set all the parameters for the micro-Doppler processing
 cpi = 0.5 # Coherent Processing Interval in seconds
-cpi_overlap = 0.8 # Overlap of the CPI
+cpi_overlap = 0.9 # Overlap of the CPI
 prf = int(data_shape[0]) # Pulse Repetition Frequency in Hz derived from number of Doppler bins
 decimation_factor = 32 # Decimation factor used during capture
 Fs =  (3.84e9) / (8 * decimation_factor) # Sample rate after decimation
 
-micro_doppler_flag: True
+micro_doppler_flag = True
 
 # ==========================================
 # CFAR PROCESSING SECTION
@@ -100,13 +100,17 @@ if not CFAR_hit_matrix_exists_flag:
 else:
     print("Loading pre-computed CFAR results from disk...")
     # Load the previously saved boolean hit matrices
-    hit_results = np.load(directory + r'\cfar_results\cfar_hit_matrix.npy')
+    hit_results = np.load(directory + fr'\cfar_results\{max_range_m}_cfar_hit_matrix.npy')
     # Load the previously saved SNR matrices
-    snr_results = np.load(directory + r'\cfar-results\cfar_sinr_matrix.npy')
+    snr_results = np.load(directory + fr'\cfar_results\{max_range_m}_cfar_sinr_matrix.npy')
     print("CFAR results loaded.")
 
 # ==========================================
 #MICRO-DOPPLER PROCESSING SECTION
 # ==========================================
-microdoppler_directory = directory + r'\micro_doppler_plots'
-DSP.plot_micro_doppler(100, cc_matrix, 'cc_matrix', cpi, cpi_overlap, prf, Fs, centre_freq, slice_number=31, save_directory=microdoppler_directory)
+if micro_doppler_flag:
+    microdoppler_directory = directory + r'\micro_doppler_plots'
+    DSP.plot_micro_doppler(300, cc_matrix, 'cc_matrix', cpi, cpi_overlap, prf, Fs, centre_freq, slice_number=33, save_directory=microdoppler_directory)
+
+else:
+    print("Finished CFAR Processing. Micro-Doppler processing skipped as per flag setting.")

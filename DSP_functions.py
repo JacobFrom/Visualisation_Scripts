@@ -306,7 +306,7 @@ def passive_processing(surv_iq, ref_iq, seg_s, seg_percent, Fs, max_lag_samples,
     #Start with specifying the CC matrix idx of interest for extraction later
     num_range_bins_out = max_lag_samples - min_lag_samples + 1  # Number of range bins in the output
 
-    cc_matrix = np.zeros((num_segments, num_range_bins_out), dtype=complex) # Initialize thecross-correlation matrix
+    cc_matrix = np.zeros((num_segments, num_range_bins_out), dtype=np.complex64) # Initialize thecross-correlation matrix
     #self_ambg_matrix = np.zeros((num_segments, num_range_bins_out),dtype=complex)
 
     start_time = time.perf_counter()
@@ -382,7 +382,7 @@ def passive_range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf
 
 
         rd_slices_list.append(rd_slice)  # Append the slice to the list
-        print(f'Finished slice: {len(rd_slices_list)} of {number_cpi}')
+        print(f'Finished slice: {len(rd_slices_list)} of {number_cpi}. RD Slice Shape: {rd_slice.shape}')
     print(f"Finished processing. Number of slices processed: {len(rd_slices_list)}")
     return rd_slices_list, velocity_axis, number_cpi, cpi_stride
 
@@ -428,9 +428,10 @@ def plot_micro_doppler(range_bin, matrix, matrix_type, cpi, cpi_overlap, prf, Fs
             plt.show()
     elif matrix_type == 'cc_matrix':
 
+        pulses_to_sum = 0.5*prf
         target_app_seconds = int(np.floor(slice_number / 5))
         target_app_sample_start_idx = int(target_app_seconds * prf)
-        target_app_sample_end_idx = int((target_app_sample_start_idx + prf))
+        target_app_sample_end_idx = int((target_app_sample_start_idx + pulses_to_sum))
 
         selected_range_bin = range_bin
 
@@ -441,7 +442,7 @@ def plot_micro_doppler(range_bin, matrix, matrix_type, cpi, cpi_overlap, prf, Fs
         # Next we define the parameters for -the coherent processing intervals:
         cpi = cpi  # Define the coherent processing interval in seconds
         cpi_overlap = cpi_overlap  # Define the overlap between each coherent processing intervals
-        pulses_per_cpi = int(cpi * prf)  # How many pulses to include in each CPI, aka fft length/NFFT points
+        pulses_per_cpi = int(cpi * pulses_to_sum)  # How many pulses to include in each CPI, aka fft length/NFFT points
         number_of_overlap = int(cpi_overlap * pulses_per_cpi)
         window_func = get_window('hann', pulses_per_cpi)  # Define the windowing function to be applied to the data
 
@@ -457,3 +458,22 @@ def plot_micro_doppler(range_bin, matrix, matrix_type, cpi, cpi_overlap, prf, Fs
             plt.show()
     else:
         print("ERROR: Invalid matrix_type specified. Use 'beat_frequencies' or 'rd_slices'.")
+
+def md_from_rd_slice(rd_slice_list, slice_number, range_bin, num_cpis, cpi_overlap):
+    start_frame = slice_number -1
+    end_frame = slice_number +1
+    stitched_slow_time = np.array([])
+    for i in range(start_frame, end_frame):
+        doppler_slice = rd_slice_list[i, :, range_bin]
+
+        # Undo the zero-centering (crucial before IFFT)
+        doppler_shifted = fft.ifftshift(doppler_slice)
+
+        # Revert to slow-time using scipy.fft
+        slow_time_slice = fft.ifft(doppler_shifted)
+
+        # Stitch them together
+        stitched_slow_time = np.concatenate((stitched_slow_time, slow_time_slice))
+    print(f"Stiched slow time matrix shape: {stitched_slow_time.shape}")
+
+
