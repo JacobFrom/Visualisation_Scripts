@@ -8,9 +8,9 @@ from scipy.signal import get_window, chirp
 import scipy.fft as fft
 
 
-directory = r'D:\ARESTOR\Data\Ulm_trial\tests\ulm_day_2_heli\passive_data_test_1'
+directory = r'G:\ARESTOR_DATA\Ulm_trial\tests\day_3\ulm_day_3_pc12_5\passive_data_test_1'
 microdoppler_directory = directory + r'\micro_doppler_plots'
-rd_slice_list = np.load(r'D:\ARESTOR\Data\Ulm_trial\tests\ulm_day_2_heli\passive_data_test_1\rd_slices\8000_rd_slice_matrix.npy')
+rd_slice_list = np.load(fr'{directory} + \rd_slices\12000_rd_slice_matrix.npy')
 print(f"RD Slice List Shape: {rd_slice_list.shape}")
 
 decimation_factor = 32  # Decimation factor used during capture
@@ -19,17 +19,18 @@ d_Fs = Fs / (8 * decimation_factor)  # Decimated sample rate
 
 prf = d_Fs / rd_slice_list.shape[1]  # Pulse Repetition Frequency in Hz derived from number of Doppler bins
 
-range_bin = 100
-slice_under_test = 33
+range_bin = 331
+slice_under_test = 612
 total_time_s = 0.6
+prf = 2048
 
 NFFT = 64
 
 num_cpi = 10000
 
 
-start_frame = slice_under_test - 1
-end_frame = slice_under_test + 2
+start_frame = slice_under_test
+end_frame = slice_under_test +1
 stitched_slow_time = np.array([])
 for i in range(start_frame, end_frame):
     doppler_slice = rd_slice_list[i, :, range_bin]
@@ -44,4 +45,20 @@ for i in range(start_frame, end_frame):
     stitched_slow_time = np.concatenate((stitched_slow_time, slow_time_slice))
 print(f"Stiched slow time matrix shape: {stitched_slow_time.shape}")
 
+plt.figure(figsize=(14, 6))
+
+# NFFT=64, noverlap=63 for maximum temporal continuity
+# sides='twosided' is mandatory for complex radar data
+Pxx, freqs, bins, im = plt.specgram(
+    stitched_slow_time,
+    NFFT=NFFT,
+    Fs=prf,
+    mode='magnitude',
+    noverlap=(NFFT -1),
+    sides='twosided',
+    scale='dB',
+    cmap='viridis',
+    #vmin=-50,
+    #vmax= 0,
+)
 

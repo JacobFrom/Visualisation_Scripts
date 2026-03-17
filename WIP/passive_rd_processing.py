@@ -11,26 +11,26 @@ centre_freq = 570e6  # active centre frequency
 decimation_factor = 32  # Decimation factor used during capture
 Fs = 3.84e9  # Sample rate after decimation
 d_Fs = Fs / (8 * decimation_factor)  # Decimated sample rate
-seg_s = 1024 # Number of segments per second, similar to PRF
+seg_s = 2048 # Number of segments per second, similar to PRF
 seg_percent = 100 #Number of segments used in xcorr
 
 #These are the changable parameters of the processing, they will affect the correlations.
 min_range = 0  # Minimum range in meters
 min_lag_samples = np.ceil(min_range * d_Fs / c).astype(int)  # Minimum lag in samples
-max_range = 8000  # Maximum range in meters
+max_range = 10000  # Maximum range in meters
 max_lag_samples = np.ceil(max_range * d_Fs / c).astype(int)  # Maximum lag in samples
 
 #These are the parameters of the range-Doppler processing, they will affect the range-Doppler map and subsequent video.
 PRF = seg_s # Pulse Repetition Frequency in Hz used in RD slicing function, segments per second is passive equivalent in this case
 cpi_length = 1 # Coherent Processing Interval in seconds, how long to average the RD map for
-cpi_overlap = 0.8 # Overlap of the CPI, 0.8 means 80% overlap
+cpi_overlap = 0.9 # Overlap of the CPI, 0.8 means 80% overlap
 rd_window = 'blackmanharris' # Window function for Doppler processing, can be 'hamming', 'blackman', 'blackmanharris', etc.
 wavelength = c / centre_freq  # Wavelength of the radar signal
 
 #These are the parameters of the range-Doppler video creation, they will affect the video output.
 CMAP = 'viridis'  # Colormap for the range-Doppler video
-unfiltered_VIDEO_FILENAME = f'{max_range}_0.1_512_0.35_wiener_filtered_0.5CPI'  # Output video filename
-unfiltered_VMIN = -50  # Min value for the color scale (dB) - adjust as needed
+unfiltered_VIDEO_FILENAME = f'{max_range}_0.1_2048_1_wiener_filtered_30db_cropped'  # Output video filename
+unfiltered_VMIN = -30  # Min value for the color scale (dB) - adjust as needed
 unfiltered_VMAX = 0  # Max value for the color scale (dB)
 vid_x_lim = [0, max_range]  # X-axis limits for the video
 
@@ -41,12 +41,12 @@ batch_process_flag = False # Set to True to process all datasets in the director
 correlation_exists_flag = False
 filtered_iq_exists_flag = True
 
-experiment_directory = fr'D:\ARESTOR\Data\Ulm_trial\tests' # Directory containing the experiment data
+experiment_directory = fr'G:\ARESTOR_DATA\Ulm_trial\tests\day_3' # Directory containing the experiment data
 
 if batch_process_flag:
     captures = os.listdir(experiment_directory)
 else:
-    captures = ['ulm_day_2_heli']  # Set to a specific capture directory if not batch processing
+    captures = ['ulm_day_3_pc12_3']  # Set to a specific capture directory if not batch processing
 
 for capture in captures:
 
@@ -65,7 +65,7 @@ for capture in captures:
             print("Filtered Cross-Correlation Matrix successfully loaded from memory. No Need to load IQ")
     elif filtered_iq_exists_flag:
         ref_iq = np.load(directory + r'\ref_iq.npy')
-        surv_iq = np.load(directory + r'\0.1_512_0.35_weiner_filtered_surv_channel.npy')
+        surv_iq = np.load(directory + r'\0.1_2048_1_weiner_filtered_surv_channel.npy')
         capture_period = len(ref_iq) / d_Fs  # Calculate the duration of the capture in seconds
         print(f"IQ Matrices successfully loaded from memory. reference data shape: {ref_iq.shape}, surveillance data shape:"
               f" {surv_iq.shape}")
@@ -135,8 +135,8 @@ for capture in captures:
         video_directory = directory + r'\rd_videos'  # Directory to save the output videos
         os.makedirs(video_directory, exist_ok=True)
         #VIDEO_SAVE = os.path.join(video_directory, unfiltered_VIDEO_FILENAME)
-        doppler_limit = [velocity_axis[0], velocity_axis[-1]]
-        #doppler_limit = [-100, 100]
+        #doppler_limit = [velocity_axis[0], velocity_axis[-1]]
+        doppler_limit = [-150, 150]
         DSP.create_rd_video(FPS, rd_plots, PRF, cpi_stride, range_axis_m, velocity_axis,
                             unfiltered_VMIN, unfiltered_VMAX, CMAP, vid_x_lim, video_directory,
                             unfiltered_VIDEO_FILENAME, doppler_limit, sharpening=False)

@@ -20,8 +20,8 @@ Fs = 3.84e9  # Sample rate
 d_Fs = Fs / (8 * decimation_factor)  # Decimated sample rate
 block_duration = 0.1
 
-filter_taps = 512
-smoothing_weight = 0.35
+filter_taps = 2048
+smoothing_weight = 1
 
 wavelength = c / centre_freq  # Wavelength of the radar signal
 
@@ -29,12 +29,12 @@ wavelength = c / centre_freq  # Wavelength of the radar signal
 batch_process_flag = False  # Set to True to process all datasets in the directory, False to process a single dataset
 iq_matrices_exist_flag = False
 
-experiment_directory = fr'D:\ARESTOR\Data\Ulm_trial\tests' #Directory containing the experiment data
+experiment_directory = fr'G:\ARESTOR_DATA\Ulm_trial\tests\day_3' #Directory containing the experiment data
 
 if batch_process_flag:
     captures = os.listdir(experiment_directory)
 else:
-    captures = ['ulm_day_2_heli']  # Set to a specific capture directory if not batch processing
+    captures = ['ulm_day_3_pc12_3']  # Set to a specific capture directory if not batch processing
 
 for capture in captures:
 
@@ -72,4 +72,8 @@ for capture in captures:
     print("Finished filtering data. Saving...")
     np.save(directory + fr'\{block_duration}_{filter_taps}_{smoothing_weight}_weiner_filtered_surv_channel.npy', filtered_surv_channel)
     np.save(directory + fr'\{block_duration}_{filter_taps}_{smoothing_weight}_weiner_filter_weights.npy', weights)
-    print(f"Successfully saved filtered data")
+    print(fr"Successfully saved filtered data to: {directory}\{block_duration}_{filter_taps}_{smoothing_weight}_weiner_filtered_surv_channel.npy")
+    del filtered_surv_channel, weights, ref_iq, surv_iq
+    gc.collect()
+    print("Memory cleared, moving onto next capture (if applicable).")
+print("Finished Filtering of all IQ data")

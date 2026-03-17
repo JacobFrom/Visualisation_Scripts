@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 import os
 
 # Define the folder path where the data is stored
-directory = fr'D:\ARESTOR\Data\Ulm_trial\tests\ulm_day_2_heli\passive_data_test_1'
+directory = fr'G:\ARESTOR_DATA\Ulm_trial\tests\day_3\ulm_day_3_pc12_3\passive_data_test_1'
 
 # Load the large 3D array containing all the Range-Doppler matrices
-rd_matrices = np.load(directory + r'\rd_slices\8000_rd_slice_matrix.npy')
+rd_matrices = np.load(directory + r'\rd_slices\10000_rd_slice_matrix.npy')
 
 #Set the CA window parameters, format: [window width, window height, guard cell width, guard cell height]
 window_params = [8, 8, 2, 2]
@@ -21,7 +21,7 @@ data_shape = rd_matrices[0].shape
 max_range_m = data_shape[1] * 20
 
 # Toggle this flag: False = calculate fresh CFAR data; True = load previous results
-CFAR_hit_matrix_exists_flag = False
+CFAR_hit_matrix_exists_flag = True
 
 # ==========================================
 # CFAR PROCESSING SECTION
@@ -79,7 +79,7 @@ else:
 # ==========================================
 
 # Choose which slice (frame) to look at
-slice_number = 33
+slice_number = 135
 
 # Extract the specific Hit matrix for this frame
 hit_matrix = hit_results[slice_number]
@@ -92,7 +92,7 @@ print("Generating plots...")
 # Create a linear array for the Range axis (0 to max range)
 range_axis_m = np.linspace(0, max_range_m, int(data_shape[1]))
 # Set the floor for the dB plot (minimum intensity)
-dynamic_range = -50
+dynamic_range = -30
 # Calculate time between pulses based on number of Doppler cells
 pulse_interval = 1 / int(data_shape[0])
 # Speed of light constant
