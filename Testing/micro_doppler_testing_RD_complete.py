@@ -7,36 +7,36 @@ import matplotlib.pyplot as plt
 # ==========================================
 # 1. Configuration & Loading
 # ==========================================
-directory = r'G:\ARESTOR_DATA\Ulm_trial\tests\day_2\ulm_day_2_heli\passive_data_test_1'
+directory = r'G:\ARESTOR_DATA\SIREN\east_fort_day_3\east_fort_capture_10\passive_data_test_1'
 # Fixed the string formatting for the path
-rd_slice_matrix_path = fr'{directory}\rd_slices\8000_rd_slice_matrix.npy'
+rd_slice_matrix_path = fr'{directory}\rd_slices\4000_rd_slice_matrix.npy'
 
 # Load the data (Make sure this file exists at this path!)
 rd_slice_list = np.load(rd_slice_matrix_path)
 print(f"RD Slice List Shape: {rd_slice_list.shape}")
 
-target = "Drone"
+target = "Airbus H125"
 
 # Radar Parameters
 decimation_factor = 32
 c = sp.constants.c
 Fs = 3.84e9
 d_Fs = Fs / (8 * decimation_factor)
-centre_freq = 570e6
+centre_freq = 518e6
 wavelength = c / centre_freq
-target_velocity = 9.47
-notch_velocity = 3
+target_velocity = 8.7
+notch_velocity = 1
 
 
 f_shift_hz = (2 * (target_velocity) / wavelength)
 # We use your hardcoded PRF as requested
 prf = 2048
-range_bin = 300
-slice_under_test = 135
-NFFT = 256
+range_bin = 19
+slice_under_test = 184
+NFFT = 2048
 Noverlap = NFFT - 1
 target_range = 20*range_bin
-micro_doppler_save_name = f"slice_{slice_under_test}_micro_doppler_spectrum_target_at_{range_bin}_FFT_Length_{NFFT}.png"
+micro_doppler_save_name = f"slice_{slice_under_test}_micro_doppler_spectrum_target_at_{range_bin}_FFT_Length_{NFFT}_olap_{Noverlap}.png"
 
 
 # NOTE: Expanded the end_frame so you actually have enough slow-time data to see micro-Doppler!
@@ -108,12 +108,12 @@ Zxx[notch_indices, :] = 1e-12
 # ==========================================
 Zxx_mag = np.abs(Zxx)
 Zxx_mag = np.maximum(Zxx_mag, 1e-12) # Floor to prevent log(0)
-Zxx_db = 20 * np.log10(Zxx_mag)
+Zxx_db = 25 * np.log10(Zxx_mag)
 
 # Set dynamic range based on data distribution
 # 99.5th percentile prevents single massive clutter spikes from washing out the plot
 vmax = np.percentile(Zxx_db, 99.5)
-vmin = vmax - 45 # 45 dB dynamic range (adjust this if you want more/less contrast)
+vmin = vmax - 30 # 45 dB dynamic range (adjust this if you want more/less contrast)
 
 # ==========================================
 # 7. Plotting

@@ -14,7 +14,7 @@ import gc
 # Below are the parameters of the radar capture and fixed processing parameters. Generally don't change these apart from
 # the CF/Decimation factor which will be capture dependent.
 c = 3e8
-centre_freq = 570e6  # DVB-T centre frequency
+centre_freq = 498e6  # DVB-T centre frequency
 decimation_factor = 32  # Decimation factor used during capture
 Fs = 3.84e9  # Sample rate
 d_Fs = Fs / (8 * decimation_factor)  # Decimated sample rate
@@ -29,12 +29,12 @@ wavelength = c / centre_freq  # Wavelength of the radar signal
 batch_process_flag = False  # Set to True to process all datasets in the directory, False to process a single dataset
 iq_matrices_exist_flag = False
 
-experiment_directory = fr'G:\ARESTOR_DATA\Ulm_trial\tests\day_3' #Directory containing the experiment data
+experiment_directory = fr'G:\ARESTOR_DATA\trial_3_captures\C_band\32x' #Directory containing the experiment data
 
 if batch_process_flag:
     captures = os.listdir(experiment_directory)
 else:
-    captures = ['ulm_day_3_pc12_3']  # Set to a specific capture directory if not batch processing
+    captures = ['run_7']  # Set to a specific capture directory if not batch processing
 
 for capture in captures:
 

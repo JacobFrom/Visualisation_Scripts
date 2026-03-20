@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 import os
 
 # Define the folder path where the data is stored
-directory = fr'G:\ARESTOR_DATA\Ulm_trial\tests\day_3\ulm_day_3_pc12_3\passive_data_test_1'
+directory = fr'G:\ARESTOR_DATA\SIREN\east_fort_day_3\east_fort_capture_10\passive_data_test_1'
 
 # Load the large 3D array containing all the Range-Doppler matrices
-rd_matrices = np.load(directory + r'\rd_slices\10000_rd_slice_matrix.npy')
+rd_matrices = np.load(directory + r'\rd_slices\4000_rd_slice_matrix.npy')
 
 #Set the CA window parameters, format: [window width, window height, guard cell width, guard cell height]
 window_params = [8, 8, 2, 2]
@@ -79,7 +79,7 @@ else:
 # ==========================================
 
 # Choose which slice (frame) to look at
-slice_number = 135
+slice_number = 184
 
 # Extract the specific Hit matrix for this frame
 hit_matrix = hit_results[slice_number]
@@ -98,7 +98,7 @@ pulse_interval = 1 / int(data_shape[0])
 # Speed of light constant
 c = 3e8
 # Carrier frequency of the radar
-centre_freq = 570e6
+centre_freq = 518e6
 # Calculate signal wavelength
 wavelength = c / centre_freq
 
