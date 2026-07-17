@@ -1,8 +1,7 @@
 import os
 import time
 import numpy as np
-import DSP_functions as DSP
-import ECA_test_functions as TF
+from broken_scripts import ECA_test_functions as TF
 import gc
 
 

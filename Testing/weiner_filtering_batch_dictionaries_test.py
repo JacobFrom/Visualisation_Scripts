@@ -1,12 +1,7 @@
 import clutterCancellation as CC
 import numpy as np
-from numpy import linalg as LA
 
 import os
-import time
-import scipy as sp
-import DSP_functions as DSP
-import ECA_test_functions as TF
 import gc
 
 # =============================================================================

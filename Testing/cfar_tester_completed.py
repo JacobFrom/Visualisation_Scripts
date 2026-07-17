@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import os
 
 # Define the folder path where the data is stored
-directory = fr'G:\ARESTOR_DATA\SIREN\east_fort_day_3\east_fort_capture_10\passive_data_test_1'
+directory = fr'G:\ARESTOR_DATA\Ulm_trial\tests\day_2\ulm_day_2_3020\passive_data_test_1'
 
 # Load the large 3D array containing all the Range-Doppler matrices
 rd_matrices = np.load(directory + r'\rd_slices\4000_rd_slice_matrix.npy')
@@ -79,7 +79,7 @@ else:
 # ==========================================
 
 # Choose which slice (frame) to look at
-slice_number = 184
+slice_number = 525
 
 # Extract the specific Hit matrix for this frame
 hit_matrix = hit_results[slice_number]
@@ -92,13 +92,13 @@ print("Generating plots...")
 # Create a linear array for the Range axis (0 to max range)
 range_axis_m = np.linspace(0, max_range_m, int(data_shape[1]))
 # Set the floor for the dB plot (minimum intensity)
-dynamic_range = -30
+dynamic_range = -35
 # Calculate time between pulses based on number of Doppler cells
 pulse_interval = 1 / int(data_shape[0])
 # Speed of light constant
 c = 3e8
 # Carrier frequency of the radar
-centre_freq = 518e6
+centre_freq = 570e6
 # Calculate signal wavelength
 wavelength = c / centre_freq
 

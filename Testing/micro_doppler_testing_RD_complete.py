@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 # ==========================================
 # 1. Configuration & Loading
 # ==========================================
-directory = r'G:\ARESTOR_DATA\SIREN\east_fort_day_3\east_fort_capture_10\passive_data_test_1'
+directory = r'G:\ARESTOR_DATA\Ulm_trial\tests\day_2\ulm_day_2_3020\passive_data_test_1'
 # Fixed the string formatting for the path
 rd_slice_matrix_path = fr'{directory}\rd_slices\4000_rd_slice_matrix.npy'
 
@@ -15,25 +15,25 @@ rd_slice_matrix_path = fr'{directory}\rd_slices\4000_rd_slice_matrix.npy'
 rd_slice_list = np.load(rd_slice_matrix_path)
 print(f"RD Slice List Shape: {rd_slice_list.shape}")
 
-target = "Airbus H125"
+target = "Inspire 2"
 
 # Radar Parameters
 decimation_factor = 32
 c = sp.constants.c
 Fs = 3.84e9
 d_Fs = Fs / (8 * decimation_factor)
-centre_freq = 518e6
+centre_freq = 570e6
 wavelength = c / centre_freq
-target_velocity = 8.7
-notch_velocity = 1
+target_velocity = -8
+notch_velocity = 2
 
 
 f_shift_hz = (2 * (target_velocity) / wavelength)
 # We use your hardcoded PRF as requested
 prf = 2048
-range_bin = 19
-slice_under_test = 184
-NFFT = 2048
+range_bin = 100
+slice_under_test = 525
+NFFT = 1024
 Noverlap = NFFT - 1
 target_range = 20*range_bin
 micro_doppler_save_name = f"slice_{slice_under_test}_micro_doppler_spectrum_target_at_{range_bin}_FFT_Length_{NFFT}_olap_{Noverlap}.png"

@@ -386,94 +386,95 @@ def passive_range_Doppler_slicing(beat_frequencies, cpi_length, cpi_overlap, prf
     print(f"Finished processing. Number of slices processed: {len(rd_slices_list)}")
     return rd_slices_list, velocity_axis, number_cpi, cpi_stride
 
-def plot_micro_doppler(range_bin, matrix, matrix_type, cpi, cpi_overlap, prf, Fs, centre_freq, slice_number=None, save_directory=None):
-    """
-    Plots the micro-Doppler spectrogram for a selected range bin.
 
-    Parameters:
-    - range_bin: Index of the range bin to analyze.
-    - matrix: 2D numpy array containing either beat frequencies or cross-correlation data.
-    - matrix_type: Type of matrix provided ('beat_frequencies' or 'cc_matrix').
-    - cpi: Coherent processing interval in seconds.
-    - cpi_overlap: Overlap between each coherent processing interval.
-    - prf: Pulse repetition frequency in Hz.
-    - Fs: Sample rate after decimation.
-    - centre_freq: Centre frequency of the radar in Hz.
-    - slice_number: (Optional) Slice number for 'cc_matrix' type.
-
-
-    Returns:
-    - None
-    """
-
-    #First stage is to define duration and range bin/bins of interest
-    if matrix_type == 'beat_frequencies':
-        positive_beat_freqs = matrix
-        selected_range_bin = range_bin #Select the range bin that corresponds to where the movement under analysis occured
-        stft_data = positive_beat_freqs[selected_range_bin, :] #This assigns the stft_data variable to the range bin of choice and contains all pulses
-        print("Shape of STFT Data:", stft_data.shape)
-
-        #Next we define the parameters for -the coherent processing intervals:
-        cpi = cpi #Define the coherent processing interval in seconds
-        cpi_overlap = cpi_overlap  #Define the overlap between each coherent processing intervals
-        pulses_per_cpi = int(cpi * prf) #How many pulses to include in each CPI, aka fft length/NFFT points
-        number_of_overlap = int(cpi_overlap * pulses_per_cpi)
-        window_func = get_window('hann', pulses_per_cpi)  # Define the windowing function to be applied to the data
-
-        plt.specgram(stft_data, NFFT=pulses_per_cpi, Fs=Fs, noverlap=number_of_overlap, window=window_func, mode='magnitude', Fc=centre_freq, scale='dB')
-        if save_directory:
-            plt.savefig(save_directory, dpi=300, bbox_inches='tight')
-            plt.show()
-        else:
-            plt.show()
-    elif matrix_type == 'cc_matrix':
-
-        pulses_to_sum = 0.5*prf
-        target_app_seconds = int(np.floor(slice_number / 5))
-        target_app_sample_start_idx = int(target_app_seconds * prf)
-        target_app_sample_end_idx = int((target_app_sample_start_idx + pulses_to_sum))
-
-        selected_range_bin = range_bin
-
-        micro_dop_data= matrix[target_app_sample_start_idx:target_app_sample_end_idx, selected_range_bin]  # This assigns the stft_data variable to the range bin of choice and contains all pulses under study
-        print(f'shape of micro doppler data under test = {micro_dop_data.shape}')
-
-
-        # Next we define the parameters for -the coherent processing intervals:
-        cpi = cpi  # Define the coherent processing interval in seconds
-        cpi_overlap = cpi_overlap  # Define the overlap between each coherent processing intervals
-        pulses_per_cpi = int(cpi * pulses_to_sum)  # How many pulses to include in each CPI, aka fft length/NFFT points
-        number_of_overlap = int(cpi_overlap * pulses_per_cpi)
-        window_func = get_window('hann', pulses_per_cpi)  # Define the windowing function to be applied to the data
-
-        plt.specgram(micro_dop_data, NFFT=pulses_per_cpi, Fs=Fs, noverlap=number_of_overlap,
-                     window=window_func, mode='magnitude', Fc=centre_freq, scale='dB')
-        if save_directory:
-            os.makedirs(save_directory, exist_ok=True)
-            plot_name = f'micro_doppler_range_bin_{range_bin}_slice_{slice_number}.png'
-            save_directory = os.path.join(save_directory, plot_name)
-            plt.savefig(save_directory, dpi=300, bbox_inches='tight')
-            plt.show()
-        else:
-            plt.show()
-    else:
-        print("ERROR: Invalid matrix_type specified. Use 'beat_frequencies' or 'rd_slices'.")
-
-def md_from_rd_slice(rd_slice_list, slice_number, range_bin, num_cpis, cpi_overlap):
-    start_frame = slice_number -1
-    end_frame = slice_number +1
-    stitched_slow_time = np.array([])
-    for i in range(start_frame, end_frame):
-        doppler_slice = rd_slice_list[i, :, range_bin]
-
-        # Undo the zero-centering (crucial before IFFT)
-        doppler_shifted = fft.ifftshift(doppler_slice)
-
-        # Revert to slow-time using scipy.fft
-        slow_time_slice = fft.ifft(doppler_shifted)
-
-        # Stitch them together
-        stitched_slow_time = np.concatenate((stitched_slow_time, slow_time_slice))
-    print(f"Stiched slow time matrix shape: {stitched_slow_time.shape}")
+# def plot_micro_doppler(range_bin, matrix, matrix_type, cpi, cpi_overlap, prf, Fs, centre_freq, slice_number=None, save_directory=None):
+#     """
+#     Plots the micro-Doppler spectrogram for a selected range bin.
+#
+#     Parameters:
+#     - range_bin: Index of the range bin to analyze.
+#     - matrix: 2D numpy array containing either beat frequencies or cross-correlation data.
+#     - matrix_type: Type of matrix provided ('beat_frequencies' or 'cc_matrix').
+#     - cpi: Coherent processing interval in seconds.
+#     - cpi_overlap: Overlap between each coherent processing interval.
+#     - prf: Pulse repetition frequency in Hz.
+#     - Fs: Sample rate after decimation.
+#     - centre_freq: Centre frequency of the radar in Hz.
+#     - slice_number: (Optional) Slice number for 'cc_matrix' type.
+#
+#
+#     Returns:
+#     - None
+#     """
+#
+#     #First stage is to define duration and range bin/bins of interest
+#     if matrix_type == 'beat_frequencies':
+#         positive_beat_freqs = matrix
+#         selected_range_bin = range_bin #Select the range bin that corresponds to where the movement under analysis occured
+#         stft_data = positive_beat_freqs[selected_range_bin, :] #This assigns the stft_data variable to the range bin of choice and contains all pulses
+#         print("Shape of STFT Data:", stft_data.shape)
+#
+#         #Next we define the parameters for -the coherent processing intervals:
+#         cpi = cpi #Define the coherent processing interval in seconds
+#         cpi_overlap = cpi_overlap  #Define the overlap between each coherent processing intervals
+#         pulses_per_cpi = int(cpi * prf) #How many pulses to include in each CPI, aka fft length/NFFT points
+#         number_of_overlap = int(cpi_overlap * pulses_per_cpi)
+#         window_func = get_window('hann', pulses_per_cpi)  # Define the windowing function to be applied to the data
+#
+#         plt.specgram(stft_data, NFFT=pulses_per_cpi, Fs=Fs, noverlap=number_of_overlap, window=window_func, mode='magnitude', Fc=centre_freq, scale='dB')
+#         if save_directory:
+#             plt.savefig(save_directory, dpi=300, bbox_inches='tight')
+#             plt.show()
+#         else:
+#             plt.show()
+#     elif matrix_type == 'cc_matrix':
+#
+#         pulses_to_sum = 0.5*prf
+#         target_app_seconds = int(np.floor(slice_number / 5))
+#         target_app_sample_start_idx = int(target_app_seconds * prf)
+#         target_app_sample_end_idx = int((target_app_sample_start_idx + pulses_to_sum))
+#
+#         selected_range_bin = range_bin
+#
+#         micro_dop_data= matrix[target_app_sample_start_idx:target_app_sample_end_idx, selected_range_bin]  # This assigns the stft_data variable to the range bin of choice and contains all pulses under study
+#         print(f'shape of micro doppler data under test = {micro_dop_data.shape}')
+#
+#
+#         # Next we define the parameters for -the coherent processing intervals:
+#         cpi = cpi  # Define the coherent processing interval in seconds
+#         cpi_overlap = cpi_overlap  # Define the overlap between each coherent processing intervals
+#         pulses_per_cpi = int(cpi * pulses_to_sum)  # How many pulses to include in each CPI, aka fft length/NFFT points
+#         number_of_overlap = int(cpi_overlap * pulses_per_cpi)
+#         window_func = get_window('hann', pulses_per_cpi)  # Define the windowing function to be applied to the data
+#
+#         plt.specgram(micro_dop_data, NFFT=pulses_per_cpi, Fs=Fs, noverlap=number_of_overlap,
+#                      window=window_func, mode='magnitude', Fc=centre_freq, scale='dB')
+#         if save_directory:
+#             os.makedirs(save_directory, exist_ok=True)
+#             plot_name = f'micro_doppler_range_bin_{range_bin}_slice_{slice_number}.png'
+#             save_directory = os.path.join(save_directory, plot_name)
+#             plt.savefig(save_directory, dpi=300, bbox_inches='tight')
+#             plt.show()
+#         else:
+#             plt.show()
+#     else:
+#         print("ERROR: Invalid matrix_type specified. Use 'beat_frequencies' or 'rd_slices'.")
+#
+# def md_from_rd_slice(rd_slice_list, slice_number, range_bin, num_cpis, cpi_overlap):
+#     start_frame = slice_number -1
+#     end_frame = slice_number +1
+#     stitched_slow_time = np.array([])
+#     for i in range(start_frame, end_frame):
+#         doppler_slice = rd_slice_list[i, :, range_bin]
+#
+#         # Undo the zero-centering (crucial before IFFT)
+#         doppler_shifted = fft.ifftshift(doppler_slice)
+#
+#         # Revert to slow-time using scipy.fft
+#         slow_time_slice = fft.ifft(doppler_shifted)
+#
+#         # Stitch them together
+#         stitched_slow_time = np.concatenate((stitched_slow_time, slow_time_slice))
+#     print(f"Stiched slow time matrix shape: {stitched_slow_time.shape}")
 
 
