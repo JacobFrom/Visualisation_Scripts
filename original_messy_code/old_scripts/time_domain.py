@@ -1,5 +1,5 @@
 import numpy as np
-from legacy_working_scripts.classes import waveform
+from original_messy_code.legacy_working_scripts.classes import waveform
 import matplotlib.pyplot as plt
 
 

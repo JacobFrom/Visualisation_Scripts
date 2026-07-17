@@ -2,7 +2,7 @@ import os
 import numpy as np
 import scipy.signal as signal
 import time
-from broken_scripts import passive_processing_functions as pf
+from original_messy_code.broken_scripts import passive_processing_functions as pf
 
 # --- Configuration ---
 experiment_codename = 'run_7'

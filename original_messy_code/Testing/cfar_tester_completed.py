@@ -1,6 +1,6 @@
 import time
 import numpy as np
-from old_scripts.CaCFAR_orig import CA_CFAR as CFAR
+from original_messy_code.old_scripts.CaCFAR_orig import CA_CFAR as CFAR
 import DetProcessing as dp
 import matplotlib.pyplot as plt
 import os

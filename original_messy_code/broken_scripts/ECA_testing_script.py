@@ -1,7 +1,7 @@
 import os
 import time
 import numpy as np
-from broken_scripts import ECA_test_functions as TF
+from original_messy_code.broken_scripts import ECA_test_functions as TF
 import gc
 
 
