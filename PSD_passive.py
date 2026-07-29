@@ -6,22 +6,22 @@ import matplotlib.pyplot as plt
 
 #The data is the output of the active mode capture
 
-data = np.load(r'G:\ARESTOR_DATA\SIREN\east_fort_day_1\east_fort_capture_7\passive_data_test_1\passive_ref_output.npy')
+data = np.load(r'D:\ARESTOR\x_band_july_testing\21_07_tests\x_band_test_6\channel_2_output.npy')
 
 #Below are the parameters of the waveform
 
 prf = 1024 #Pulse Repitition Frequency
 
 tile_decimation = 8
-block_decimation = 32
+block_decimation = 4
 total_decimation = tile_decimation * block_decimation
 
-capture_period = 20
+capture_period = 3
 
 Fs = 3.84e9 #Sample Rate
 total_samples = (Fs / total_decimation) * capture_period
 
-centre_freq = 494e6
+centre_freq = 800e6
 
 data = data[0::2] + 1j*data[1::2]
 print(f'{data[0:20]}')

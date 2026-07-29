@@ -477,3 +477,121 @@ def md_from_rd_slice(rd_slice_list, slice_number, range_bin, num_cpis, cpi_overl
     print(f"Stiched slow time matrix shape: {stitched_slow_time.shape}")
 
 
+def _calculate_phase_stats(channels):
+    """Helper function to run the math on a given slice of channels."""
+    stats = []
+    for i in range(1, 4):
+        cross_corr = channels[i] * np.conj(channels[0])
+
+        # Mean and standard deviation
+        mean_vector = np.mean(cross_corr)
+        avg_phase_deg = np.degrees(np.angle(mean_vector))
+
+        phase_deviations_rad = np.angle(cross_corr * np.conj(mean_vector))
+        std_phase_deg = np.degrees(np.std(phase_deviations_rad))
+
+        # Min and Max (calculated via deviations to avoid wrap-around errors)
+        min_dev_deg = np.degrees(np.min(phase_deviations_rad))
+        max_dev_deg = np.degrees(np.max(phase_deviations_rad))
+
+        # Re-center min/max around the average and wrap strictly to [-180, 180]
+        min_phase = (avg_phase_deg + min_dev_deg + 180) % 360 - 180
+        max_phase = (avg_phase_deg + max_dev_deg + 180) % 360 - 180
+
+        stats.append((f"CH{i}-CH0", avg_phase_deg, std_phase_deg, min_phase, max_phase))
+    return stats
+
+
+def print_table(title, stats):
+    """Helper to print the oscilloscope-style table."""
+    print(f"\n--- {title} ---")
+    print("=" * 77)
+    print(f"| {'PAIR':<9} | {'AVG PHASE':<12} | {'STD DEV':<10} | {'MIN':<12} | {'MAX':<12} |")
+    print("=" * 77)
+    for pair, avg, std, min_p, max_p in stats:
+        print(f"| {pair:<9} | {avg:>8.2f} deg | {std:>6.2f} deg | {min_p:>8.2f} deg | {max_p:>8.2f} deg |")
+    print("=" * 77)
+
+
+def analyze_rf_phases(ch0, ch1, ch2, ch3, fast_compare=False, plot=False):
+    channels = [ch0, ch1, ch2, ch3]
+    total_samples = len(ch0)
+
+    # 1. Fast Compare Mode (Ends of the capture)
+    if fast_compare and total_samples > 20000:
+        print(f"Running Fast Compare on {total_samples} samples...")
+
+        # Slice first and last 10,000 samples
+        ch_start = [ch[:10000] for ch in channels]
+        ch_end = [ch[-10000:] for ch in channels]
+
+        start_stats = _calculate_phase_stats(ch_start)
+        end_stats = _calculate_phase_stats(ch_end)
+
+        print_table("FIRST 10,000 SAMPLES", start_stats)
+        print_table("LAST 10,000 SAMPLES", end_stats)
+
+    else:
+        # Full analysis
+        stats = _calculate_phase_stats(channels)
+        print_table("FULL CAPTURE ANALYSIS", stats)
+
+    # 2. Plotting over time
+    if plot:
+        plt.figure(figsize=(10, 6))
+        for i in range(1, 4):
+            cross_corr = channels[i] * np.conj(channels[0])
+            # np.unwrap prevents the plot from violently jumping between +180 and -180
+            unwrapped_phase = np.unwrap(np.angle(cross_corr))
+            plt.plot(np.degrees(unwrapped_phase), label=f"CH{i} - CH0", alpha=0.7)
+
+        plt.title("Phase Difference Over Time (Unwrapped)")
+        plt.xlabel("Sample Index")
+        plt.ylabel("Phase Difference (Degrees)")
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+
+def plot_phase_differences(ch0, ch1, ch2, ch3, max_points=5000):
+    """
+    Plots the phase difference of 3 channels efficiently by downsampling
+    to prevent memory crashes.
+    """
+    channels = [ch0, ch1, ch2, ch3]
+    total_samples = len(ch0)
+
+    # Calculate a step size to ensure we never plot more than max_points
+    step = max(1, total_samples // max_points)
+
+    plt.figure(figsize=(10, 6))
+
+    # Standard oscilloscope trace colors
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c']
+
+    for i in range(1, 4):
+        # 1. Downsample the raw arrays FIRST (instantly reduces memory load)
+        ch_target_decimated = channels[i][::step]
+        ch_ref_decimated = channels[0][::step]
+
+        # 2. Calculate cross-correlation only on the small arrays
+        cross_corr = ch_target_decimated * np.conj(ch_ref_decimated)
+
+        # 3. Extract phase in radians, unwrap, then convert to degrees
+        phase_rad = np.angle(cross_corr)
+        unwrapped_phase_deg = np.degrees(np.unwrap(phase_rad))
+
+        # Create an X-axis that reflects the true sample numbers
+        x_axis = np.arange(0, total_samples, step)
+
+        # Plot the colored line for this channel pair
+        plt.plot(x_axis, unwrapped_phase_deg,
+                 label=f"CH{i} - CH0", color=colors[i - 1], alpha=0.8)
+
+    plt.title("Phase Difference Over Time (Decimated)")
+    plt.xlabel("Sample Index")
+    plt.ylabel("Phase Difference (Degrees)")
+    plt.legend(loc="upper right")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
