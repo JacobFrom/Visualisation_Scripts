@@ -595,3 +595,88 @@ def plot_phase_differences(ch0, ch1, ch2, ch3, max_points=5000):
     plt.grid(True)
     plt.tight_layout()
     plt.show()
+
+
+def plot_PSD_channels(ch0, ch1, ch2, ch3, center_freq, bandwidth, test_directory, normalize=False):
+    """
+    Computes the FFT of raw I/Q radar data for 4 separate channels, plots the amplitude in dB,
+    and saves the figure to the specified directory.
+    """
+    channels = [ch0, ch1, ch2, ch3]
+    N = len(ch0)
+
+    freq_axis = np.fft.fftshift(np.fft.fftfreq(N, d=1 / bandwidth))
+    freq_axis += center_freq
+
+    plt.figure(figsize=(10, 6))
+    peaks = []
+
+    for i, ch_data in enumerate(channels):
+        windowed_data = ch_data * np.hamming(N)
+        spectrum = np.fft.fft(windowed_data)
+        amplitude_linear = np.abs(spectrum)
+
+        raw_peak_db = 20.0 * np.log10(np.max(amplitude_linear) + 1e-12)
+        peaks.append(raw_peak_db)
+
+        if normalize:
+            amplitude_linear = amplitude_linear / np.max(amplitude_linear)
+
+        amplitude_db = 20.0 * np.log10(amplitude_linear + 1e-12)
+        amplitude_shifted = np.fft.fftshift(amplitude_db)
+
+        plt.plot(freq_axis, amplitude_shifted, label=f'Channel {i}')
+
+    print(f"CH0 Peak = {peaks[0]:.2f} dB\n"
+          f"CH1 Peak = {peaks[1]:.2f} dB\n"
+          f"CH2 Peak = {peaks[2]:.2f} dB\n"
+          f"CH3 Peak = {peaks[3]:.2f} dB")
+
+    plt.title('PSD Plot of 4 Channels')
+    plt.xlabel('Frequency [Hz]')
+    ylabel = 'Normalized Magnitude [dB]' if normalize else 'Magnitude [dB]'
+    plt.ylabel(ylabel)
+
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.legend()
+    plt.tight_layout()
+
+    # Save the figure before showing
+    save_path = os.path.join(test_directory, f"PSD_plot_{N}.png")
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    print(f"Saved PSD plot to: {save_path}")
+
+    plt.show()
+
+
+def plot_raw_adc(ch0, ch1, ch2, ch3, test_directory, samples_to_plot=1000, y_limit=3000):
+    """
+    Plots the raw time-domain ADC bits (Real/In-phase part) for 4 channels
+    and saves the figure to the specified directory.
+    """
+    channels = [ch0, ch1, ch2, ch3]
+    samples_to_plot = min(samples_to_plot, len(ch0))
+    time_axis = np.arange(samples_to_plot)
+
+    plt.figure(figsize=(10, 6))
+
+    for i, ch_data in enumerate(channels):
+        raw_bits = np.real(ch_data[:samples_to_plot])
+        plt.plot(time_axis, raw_bits, label=f'Channel {i}', alpha=0.8)
+
+    plt.title(f'Raw ADC Bits (First {samples_to_plot} Samples)')
+    plt.xlabel('Sample Index')
+    plt.ylabel('Amplitude (ADC Bits)')
+
+    plt.ylim(-y_limit, y_limit)
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.legend(loc='upper right')
+    plt.tight_layout()
+
+    # Save the figure before showing
+    save_path = os.path.join(test_directory, f"raw_ADC_plot_{samples_to_plot}.png")
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    print(f"Saved ADC plot to: {save_path}")
+
+    plt.show()
