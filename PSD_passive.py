@@ -6,17 +6,17 @@ import matplotlib.pyplot as plt
 
 #The data is the output of the active mode capture
 
-data = np.load(r'D:\ARESTOR\x_band_july_testing\21_07_tests\x_band_test_6\channel_2_output.npy')
+data = np.load(r'/home/uceejpw/x_band_testing_september_2026_data/ADC_2345_cable_GDB_gain_18_25MHz/channel_2_output.npy')
 
 #Below are the parameters of the waveform
 
 prf = 1024 #Pulse Repitition Frequency
 
 tile_decimation = 8
-block_decimation = 4
+block_decimation = 8
 total_decimation = tile_decimation * block_decimation
 
-capture_period = 3
+capture_period = 2
 
 Fs = 3.84e9 #Sample Rate
 total_samples = (Fs / total_decimation) * capture_period
