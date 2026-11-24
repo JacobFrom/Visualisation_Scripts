@@ -46,6 +46,7 @@ num_slices = 20              # slices to stitch. Each adds 0.1 s, so 20 slices =
 # Target body motion. Set target_velocity = None to find the body line automatically
 target_velocity = 8.7        # m/s, bistatic velocity of the body (f = 2v/lambda, as before)
 notch_velocity = 1           # m/s, total width of the body notch (as before)
+edge_trim_s = 0.15           # s cut from each end of the record after the notch filter
 
 # Geometry, used only for the tip speed / blade length estimates
 beta_deg = 19.0              # bistatic angle at the target
@@ -58,6 +59,7 @@ NFFT_short = 64              # ~31 ms window -> blade flash figure (same as your
 NFFT_flash = 16              # ~7.8 ms window, used only to MEASURE the flash interval. Use 8 for propellers
 nfft_short_padded = 256      # zero padding for the short windows so the Doppler axis is smooth
 dynamic_range_db = 25        # colour scale range below the 99.5th percentile (as in your original script)
+colour_floor_above_noise_db = 3  # anything less than this above the median (noise) level is drawn dark
 doppler_plot_limit_hz = 700  # Doppler axis shown is +/- this. Set to None for the full +/- prf/2
 
 # Search limits for the measurements
@@ -137,7 +139,15 @@ shifted_slow_time = stitched_slow_time * np.exp(-1j * 2 * np.pi * body_doppler_h
 # filter forwards and backwards, so there is no phase shift or time delay.
 notch_width_hz = (2 * notch_velocity) / wavelength
 b, a = signal.butter(4, (notch_width_hz / 2) / (prf / 2), btype='highpass')
-notched_slow_time = signal.filtfilt(b, a, shifted_slow_time)
+notched_slow_time = signal.filtfilt(b, a, shifted_slow_time, padlen=N_samples - 1)
+
+# The filter leaves a short transient at each end of the record, so cut off edge_trim_s
+# from both ends (this shortens the record by 2 * edge_trim_s)
+trim = int(edge_trim_s * prf)
+shifted_slow_time = shifted_slow_time[trim:N_samples - trim]
+notched_slow_time = notched_slow_time[trim:N_samples - trim]
+N_samples = len(notched_slow_time)
+start_time_s = start_time_s + trim / prf
 
 # Doppler spectra before and after the notch (Hann windowed), used for the measurements
 hann = signal.get_window('hann', N_samples)
@@ -174,11 +184,13 @@ f_flash, t_flash, S_flash_db = make_spectrogram(notched_slow_time, NFFT_flash, n
 mean_long_db = 10 * np.log10(np.mean(10 ** (S_long_db / 10), axis=1))
 noise_floor_db = np.median(mean_long_db)
 occupied = np.where(mean_long_db > noise_floor_db + extent_threshold_db)[0]
-if len(occupied) > 0:
+if len(occupied) > 5:
     f_upper = f_long[occupied[-1]]
     f_lower = f_long[occupied[0]]
 else:
-    f_upper = f_lower = 0.0
+    # Nothing above the threshold: fall back to the whole Doppler axis
+    print("WARNING: no micro-Doppler found above the threshold, so B is not valid")
+    f_upper, f_lower = f_long[-1], f_long[0]
 doppler_extent_hz = f_upper - f_lower
 
 # 6b. Spectral line spacing F_r: autocorrelation of the notched Doppler spectrum
@@ -191,7 +203,13 @@ spec_acf = np.correlate(mag, mag, mode='full')[len(mag) - 1:]
 spec_acf = spec_acf / spec_acf[0]
 spec_lags_hz = np.arange(len(spec_acf)) * df
 in_range = (spec_lags_hz >= rotor_rate_search_hz[0]) & (spec_lags_hz <= rotor_rate_search_hz[1])
-rotor_rate_hz = spec_lags_hz[in_range][np.argmax(spec_acf[in_range])]
+# As for the flashes below, take the FIRST strong peak (the 2x, 3x ... peaks can be bigger)
+spec_peaks, _ = signal.find_peaks(spec_acf)
+spec_peaks = spec_peaks[in_range[spec_peaks]]
+strong_spec_peaks = spec_peaks[spec_acf[spec_peaks] > acf_peak_threshold]
+if len(strong_spec_peaks) == 0:
+    strong_spec_peaks = spec_peaks[[np.argmax(spec_acf[spec_peaks])]]
+rotor_rate_hz = spec_lags_hz[strong_spec_peaks[0]]
 
 # 6c. Flash interval: sum the short spectrogram power over Doppler to get a
 #     "flash envelope" in time, then autocorrelate it.
@@ -207,6 +225,8 @@ in_range = (env_lags_ms >= flash_interval_search_ms[0]) & (env_lags_ms <= flash_
 acf_peaks, _ = signal.find_peaks(env_acf)
 acf_peaks = acf_peaks[in_range[acf_peaks]]
 strong_peaks = acf_peaks[env_acf[acf_peaks] > acf_peak_threshold]
+if len(strong_peaks) == 0:
+    strong_peaks = acf_peaks[[np.argmax(env_acf[acf_peaks])]]
 flash_interval_ms = env_lags_ms[strong_peaks[0]]
 
 # 6d. Individual flashes: peaks in the envelope, and their width (duration)
@@ -258,14 +278,19 @@ lines = [
     "",
     f"--- Rotor estimates (beta = {beta_deg} deg, theta = {theta_deg} deg) ---",
     f"Tip speed L*Omega = lambda B / (4 sin(theta) cos(beta/2)) = {tip_speed:.1f} m/s",
-    "Blades   rpm      blade length (m)",
+    "rpm (lines) uses F_r from the line spacing. rpm (flashes) uses F_r from the flash",
+    "interval, which is usually more precise for short records.",
+    "Blades   rpm (lines)   rpm (flashes)   blade length (m)",
 ]
+# F_r from the flash interval: flash rate = F_r for even blades, 2 F_r for odd blades
+rotor_rate_from_flashes_hz = flash_rate_hz if parity == "even" else flash_rate_hz / 2
 for n_blades in blade_counts_to_test:
-    omega = 2 * np.pi * rotor_rate_hz / n_blades
-    rpm = 60 * rotor_rate_hz / n_blades
+    omega = 2 * np.pi * rotor_rate_from_flashes_hz / n_blades
+    rpm_lines = 60 * rotor_rate_hz / n_blades
+    rpm_flashes = 60 * rotor_rate_from_flashes_hz / n_blades
     blade_length = tip_speed / omega
     match = "" if (n_blades % 2 == 0) == (parity == "even") else "  (parity does not match)"
-    lines.append(f"{n_blades:>4}   {rpm:7.1f}   {blade_length:6.2f}{match}")
+    lines.append(f"{n_blades:>4}   {rpm_lines:11.1f}   {rpm_flashes:13.1f}   {blade_length:10.2f}{match}")
 
 if abs(f_upper) > 0.9 * prf / 2 or abs(f_lower) > 0.9 * prf / 2:
     lines.append("WARNING: the micro-Doppler reaches the edge of the Doppler axis, so B may be aliased")
@@ -283,8 +308,10 @@ plt.rcParams.update({'font.size': font_size, 'font.family': 'serif'})
 
 def save_paper_spectrogram(times, f, power_db, name, plot_seconds=None):
     fig, ax = plt.subplots(figsize=(fig_width_in, fig_height_in))
+    # Bottom of the colour scale: just above the noise floor, but never more than dynamic_range_db down
+    colour_min = max(-dynamic_range_db, np.median(power_db) + colour_floor_above_noise_db)
     pc = ax.pcolormesh(times, f, power_db, cmap='viridis', shading='auto',
-                       vmin=-dynamic_range_db, vmax=0, rasterized=True)
+                       vmin=colour_min, vmax=0, rasterized=True)
     ax.set_xlabel('Time (s)', labelpad=1)
     ax.set_ylabel('Doppler (Hz)', labelpad=1)
     ax.tick_params(length=2, pad=1)
