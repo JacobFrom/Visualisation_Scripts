@@ -54,14 +54,17 @@ theta_deg = 90.0             # angle between rotor axis and bisector. ~90 deg fo
 
 # Spectrogram settings
 NFFT_long = 1024             # 0.5 s window -> 2 Hz resolution, shows the spectral lines
-NFFT_short = 8               # ~3.9 ms window -> shows the blade flashes
+NFFT_short = 16              # ~7.8 ms window -> shows the blade flashes. Use 8 for propellers
+                             # (shorter flash interval), at the cost of more Doppler smearing
 nfft_short_padded = 256      # zero padding for the short window so the Doppler axis is smooth
-dynamic_range_db = 40        # colour scale range below the maximum
+dynamic_range_db = 30        # colour scale range below the maximum
+doppler_plot_limit_hz = 700  # Doppler axis shown is +/- this. Set to None for the full +/- prf/2
 
 # Search limits for the measurements
 rotor_rate_search_hz = (10, 250)       # where to look for the spectral line spacing F_r
 flash_interval_search_ms = (2, 60)     # where to look for the time between blade flashes
 extent_threshold_db = 10               # Doppler extent = bins this far above the noise floor
+acf_peak_threshold = 0.2               # a flash-envelope autocorrelation peak must be above this to count
 blade_counts_to_test = [2, 3, 4, 5, 6]
 
 # Figure size for the paper. 1.72 in wide fits four panels across a two-column
@@ -196,7 +199,13 @@ env_acf = np.correlate(env, env, mode='full')[len(env) - 1:]
 env_acf = env_acf / env_acf[0]
 env_lags_ms = np.arange(len(env_acf)) / prf * 1e3
 in_range = (env_lags_ms >= flash_interval_search_ms[0]) & (env_lags_ms <= flash_interval_search_ms[1])
-flash_interval_ms = env_lags_ms[in_range][np.argmax(env_acf[in_range])]
+# Take the FIRST strong peak, not the biggest one. With an odd number of blades the
+# approaching and receding flashes differ in strength, so the peak at two flash
+# intervals can be bigger than the peak at one.
+acf_peaks, _ = signal.find_peaks(env_acf)
+acf_peaks = acf_peaks[in_range[acf_peaks]]
+strong_peaks = acf_peaks[env_acf[acf_peaks] > acf_peak_threshold]
+flash_interval_ms = env_lags_ms[strong_peaks[0]]
 
 # 6d. Individual flashes: peaks in the envelope, and their width (duration)
 noise_level = np.median(envelope)
@@ -278,6 +287,8 @@ def save_paper_spectrogram(times, f, power_db, name, plot_seconds=None):
     ax.set_ylabel('Doppler (Hz)')
     if plot_seconds is not None:
         ax.set_xlim(times[0], times[0] + plot_seconds)
+    if doppler_plot_limit_hz is not None:
+        ax.set_ylim(-doppler_plot_limit_hz, doppler_plot_limit_hz)
     if show_colorbar:
         fig.colorbar(pc, ax=ax, label='Power (dB)')
     fig.tight_layout(pad=0.2)
