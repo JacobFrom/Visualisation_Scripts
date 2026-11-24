@@ -57,9 +57,10 @@ theta_deg = 90.0             # angle between rotor axis and bisector. ~90 deg fo
 NFFT_long = 256              # 0.125 s window -> 8 Hz resolution, shows the spectral lines
 NFFT_short = 64              # ~31 ms window -> blade flash figure (same as your original plots)
 NFFT_flash = 16              # ~7.8 ms window, used only to MEASURE the flash interval. Use 8 for propellers
-nfft_short_padded = 256      # zero padding for the short windows so the Doppler axis is smooth
+nfft_short_padded = 256      # zero padding for the flash MEASUREMENT window only. The figures are
+                             # not padded: padding interpolates the noise into blobs and worms
 dynamic_range_db = 25        # colour scale range below the 99.5th percentile (as in your original script)
-colour_floor_above_noise_db = 3  # anything less than this above the median (noise) level is drawn dark
+colour_floor_above_noise_db = 6  # anything less than this above the median (noise) level is drawn dark
 doppler_plot_limit_hz = 700  # Doppler axis shown is +/- this. Set to None for the full +/- prf/2
 
 # Search limits for the measurements
@@ -174,7 +175,7 @@ def make_spectrogram(x, nperseg, nfft):
     return f, times, power_db
 
 f_long, t_long, S_long_db = make_spectrogram(notched_slow_time, NFFT_long, NFFT_long)
-f_short, t_short, S_short_db = make_spectrogram(notched_slow_time, NFFT_short, nfft_short_padded)
+f_short, t_short, S_short_db = make_spectrogram(notched_slow_time, NFFT_short, NFFT_short)   # no padding, like your original
 f_flash, t_flash, S_flash_db = make_spectrogram(notched_slow_time, NFFT_flash, nfft_short_padded)
 
 # ==========================================
