@@ -41,12 +41,12 @@ slice_under_test = 184       # first RD slice to use
 cpi_length = 1.0             # s, CPI used in the RD slicing
 cpi_overlap = 0.9            # overlap used in the RD slicing
 rd_window = 'blackmanharris' # window used in the RD slicing
-num_slices = 20              # slices to stitch. Each adds 0.1 s, so 20 slices = 2 s
+num_slices = 10              # slices to stitch. Each adds 0.1 s. Match it to the time the target stays in the range bin
 
 # Target body motion. Set target_velocity = None to find the body line automatically
 target_velocity = 8.7        # m/s, bistatic velocity of the body (f = 2v/lambda, as before)
 notch_velocity = 1           # m/s, total width of the body notch (as before)
-edge_trim_s = 0.15           # s cut from each end of the record after the notch filter
+edge_trim_s = 0.05           # s cut from each end of the record after the notch filter
 
 # Geometry, used only for the tip speed / blade length estimates
 beta_deg = 19.0              # bistatic angle at the target
@@ -54,7 +54,7 @@ theta_deg = 90.0             # angle between rotor axis and bisector. ~90 deg fo
                              # rotor. For a nose propeller this is roughly delta (heading angle)
 
 # Spectrogram settings
-NFFT_long = 1024             # 0.5 s window -> 2 Hz resolution, shows the spectral lines
+NFFT_long = 256              # 0.125 s window -> 8 Hz resolution, shows the spectral lines
 NFFT_short = 64              # ~31 ms window -> blade flash figure (same as your original plots)
 NFFT_flash = 16              # ~7.8 ms window, used only to MEASURE the flash interval. Use 8 for propellers
 nfft_short_padded = 256      # zero padding for the short windows so the Doppler axis is smooth
@@ -182,7 +182,7 @@ f_flash, t_flash, S_flash_db = make_spectrogram(notched_slow_time, NFFT_flash, n
 # 6a. Doppler extent B: average the long spectrogram over time and find the
 #     outermost bins that sit extent_threshold_db above the noise floor
 mean_long_db = 10 * np.log10(np.mean(10 ** (S_long_db / 10), axis=1))
-noise_floor_db = np.median(mean_long_db)
+noise_floor_db = np.percentile(mean_long_db, 10)   # 10th percentile, so a wide rotor does not raise it
 occupied = np.where(mean_long_db > noise_floor_db + extent_threshold_db)[0]
 if len(occupied) > 5:
     f_upper = f_long[occupied[-1]]

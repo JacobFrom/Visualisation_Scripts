@@ -8,7 +8,7 @@ To use it, edit the configuration block at the top (capture directory, target na
 carrier frequency, range bin, first slice, body velocity, bistatic angle) and run it.
 It writes to `<capture directory>/claude_md_figures/`:
 
-- `*_md_long_1024.pdf/.png`: 0.5 s window spectrogram (spectral lines)
+- `*_md_long_256.pdf/.png`: 0.125 s window spectrogram (spectral lines)
 - `*_md_short_64.pdf/.png`: ~31 ms window spectrogram (blade flashes, as in the original script)
 - `*_results.txt`: body Doppler, Doppler extent B, line spacing F_r, flash interval,
   blade parity, tip speed, and rpm / blade length for 2 to 6 blades
