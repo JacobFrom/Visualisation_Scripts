@@ -66,7 +66,8 @@ doppler_plot_limit_hz = 700  # Doppler axis shown is +/- this. Set to None for t
 rotor_rate_search_hz = (10, 250)       # where to look for the spectral line spacing F_r
 flash_interval_search_ms = (2, 60)     # where to look for the time between blade flashes
 extent_threshold_db = 10               # Doppler extent = bins this far above the noise floor
-acf_peak_threshold = 0.2               # a flash-envelope autocorrelation peak must be above this to count
+acf_peak_threshold = 0.2               # an autocorrelation peak must stand this far above its
+                                       # neighbouring dips (its 'prominence') to count
 blade_counts_to_test = [2, 3, 4, 5, 6]
 
 # Figure size for the paper. 1.72 in wide fits four panels across a two-column
@@ -204,12 +205,12 @@ spec_acf = spec_acf / spec_acf[0]
 spec_lags_hz = np.arange(len(spec_acf)) * df
 in_range = (spec_lags_hz >= rotor_rate_search_hz[0]) & (spec_lags_hz <= rotor_rate_search_hz[1])
 # As for the flashes below, take the FIRST strong peak (the 2x, 3x ... peaks can be bigger)
-spec_peaks, _ = signal.find_peaks(spec_acf)
+spec_peaks, _ = signal.find_peaks(spec_acf, prominence=acf_peak_threshold)
 spec_peaks = spec_peaks[in_range[spec_peaks]]
-strong_spec_peaks = spec_peaks[spec_acf[spec_peaks] > acf_peak_threshold]
-if len(strong_spec_peaks) == 0:
-    strong_spec_peaks = spec_peaks[[np.argmax(spec_acf[spec_peaks])]]
-rotor_rate_hz = spec_lags_hz[strong_spec_peaks[0]]
+if len(spec_peaks) > 0:
+    rotor_rate_hz = spec_lags_hz[spec_peaks[0]]
+else:   # no clear peak: fall back to the biggest value in the search range
+    rotor_rate_hz = spec_lags_hz[in_range][np.argmax(spec_acf[in_range])]
 
 # 6c. Flash interval: sum the short spectrogram power over Doppler to get a
 #     "flash envelope" in time, then autocorrelate it.
@@ -222,12 +223,12 @@ in_range = (env_lags_ms >= flash_interval_search_ms[0]) & (env_lags_ms <= flash_
 # Take the FIRST strong peak, not the biggest one. With an odd number of blades the
 # approaching and receding flashes differ in strength, so the peak at two flash
 # intervals can be bigger than the peak at one.
-acf_peaks, _ = signal.find_peaks(env_acf)
+acf_peaks, _ = signal.find_peaks(env_acf, prominence=acf_peak_threshold)
 acf_peaks = acf_peaks[in_range[acf_peaks]]
-strong_peaks = acf_peaks[env_acf[acf_peaks] > acf_peak_threshold]
-if len(strong_peaks) == 0:
-    strong_peaks = acf_peaks[[np.argmax(env_acf[acf_peaks])]]
-flash_interval_ms = env_lags_ms[strong_peaks[0]]
+if len(acf_peaks) > 0:
+    flash_interval_ms = env_lags_ms[acf_peaks[0]]
+else:   # no clear peak: fall back to the biggest value in the search range
+    flash_interval_ms = env_lags_ms[in_range][np.argmax(env_acf[in_range])]
 
 # 6d. Individual flashes: peaks in the envelope, and their width (duration)
 noise_level = np.median(envelope)
@@ -240,10 +241,27 @@ else:
     flash_duration_ms = np.nan
 short_window_ms = NFFT_flash / prf * 1e3
 
-# 6e. Parity: flash rate equals F_r for an even blade count and 2 F_r for an odd count
+# 6e. Parity. Even blades: the approaching and receding blades flash at the SAME time,
+#     so the positive and negative Doppler flashes line up. Odd blades: they alternate,
+#     so the negative flashes sit halfway between the positive ones.
+#     Cross-correlate the positive-Doppler and negative-Doppler flash envelopes and see
+#     where the peak is: lag ~0 -> even, lag ~half a period -> odd.
 flash_rate_hz = 1e3 / flash_interval_ms
-ratio = flash_rate_hz / rotor_rate_hz
-parity = "even" if abs(ratio - 1) < abs(ratio - 2) else "odd"
+ratio = flash_rate_hz / rotor_rate_hz          # ~1 (even, or odd with one side weak), ~2 (odd)
+side_band = np.abs(f_flash) > notch_width_hz / 2
+env_pos = np.sum(10 ** (S_flash_db[(f_flash > 0) & side_band] / 10), axis=0)
+env_neg = np.sum(10 ** (S_flash_db[(f_flash < 0) & side_band] / 10), axis=0)
+env_pos = env_pos - np.mean(env_pos)
+env_neg = env_neg - np.mean(env_neg)
+period = int(round(prf / rotor_rate_hz))       # samples in one F_r period
+xcorr = np.correlate(env_pos, env_neg, mode='full')
+centre = len(env_neg) - 1
+lags = np.arange(-(period // 2), period // 2 + 1)
+best_lag = lags[np.argmax(xcorr[centre + lags])]
+pos_neg_offset = abs(best_lag) / period        # 0 -> even, 0.5 -> odd
+parity = "even" if pos_neg_offset < 0.25 else "odd"
+# F_r from the flashes: the flash rate is 1x or 2x F_r, whichever is closer
+rotor_rate_from_flashes_hz = flash_rate_hz / max(1, round(ratio))
 
 # 6f. Tip speed (from B), then rpm and blade length for each blade count
 beta = np.deg2rad(beta_deg)
@@ -271,7 +289,9 @@ lines = [
     f"(>{extent_threshold_db} dB above the noise floor)",
     f"Spectral line spacing F_r: {rotor_rate_hz:.2f} Hz  (+/- {df:.2f} Hz frequency bin)",
     f"Flash interval: {flash_interval_ms:.2f} ms  (+/- {1e3 / prf:.2f} ms sample)  -> flash rate {flash_rate_hz:.2f} Hz",
-    f"Flash rate / F_r = {ratio:.2f}  ->  {parity} number of blades",
+    f"Flash rate / F_r = {ratio:.2f}  (2 means odd blades; 1 means even, or odd with one side weak)",
+    f"Positive vs negative flash offset = {pos_neg_offset:.2f} of a period ({abs(best_lag) / prf * 1e3:.1f} ms)"
+    f"  ->  {parity} number of blades  (0 = even, 0.5 = odd)",
     f"Flashes detected: {len(flash_peaks)}, median duration {flash_duration_ms:.2f} ms "
     f"(short STFT window is {short_window_ms:.2f} ms, so durations below this are not resolved)",
     f"Predicted flash duration 2 sin(theta) / B: {predicted_flash_ms:.2f} ms",
@@ -283,7 +303,6 @@ lines = [
     "Blades   rpm (lines)   rpm (flashes)   blade length (m)",
 ]
 # F_r from the flash interval: flash rate = F_r for even blades, 2 F_r for odd blades
-rotor_rate_from_flashes_hz = flash_rate_hz if parity == "even" else flash_rate_hz / 2
 for n_blades in blade_counts_to_test:
     omega = 2 * np.pi * rotor_rate_from_flashes_hz / n_blades
     rpm_lines = 60 * rotor_rate_hz / n_blades
