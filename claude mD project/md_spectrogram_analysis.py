@@ -67,8 +67,8 @@ doppler_plot_limit_hz = 700  # Doppler axis shown is +/- this. Set to None for t
 rotor_rate_search_hz = (10, 250)       # where to look for the spectral line spacing F_r
 flash_interval_search_ms = (2, 60)     # where to look for the time between blade flashes
 extent_threshold_db = 10               # Doppler extent = bins this far above the noise floor
-acf_peak_threshold = 0.2               # an autocorrelation peak must stand this far above its
-                                       # neighbouring dips (its 'prominence') to count
+acf_peak_threshold = 0.2               # a line-spacing autocorrelation peak must stand this far
+                                       # above its neighbouring dips (its 'prominence') to count
 blade_counts_to_test = [2, 3, 4, 5, 6]
 
 # Figure size for the paper. 1.72 in wide fits four panels across a two-column
@@ -213,42 +213,11 @@ if len(spec_peaks) > 0:
 else:   # no clear peak: fall back to the biggest value in the search range
     rotor_rate_hz = spec_lags_hz[in_range][np.argmax(spec_acf[in_range])]
 
-# 6c. Flash interval: sum the short spectrogram power over Doppler to get a
-#     "flash envelope" in time, then autocorrelate it.
-envelope = np.sum(10 ** (S_flash_db / 10), axis=0)
-env = envelope - np.mean(envelope)
-env_acf = np.correlate(env, env, mode='full')[len(env) - 1:]
-env_acf = env_acf / env_acf[0]
-env_lags_ms = np.arange(len(env_acf)) / prf * 1e3
-in_range = (env_lags_ms >= flash_interval_search_ms[0]) & (env_lags_ms <= flash_interval_search_ms[1])
-# Take the FIRST strong peak, not the biggest one. With an odd number of blades the
-# approaching and receding flashes differ in strength, so the peak at two flash
-# intervals can be bigger than the peak at one.
-acf_peaks, _ = signal.find_peaks(env_acf, prominence=acf_peak_threshold)
-acf_peaks = acf_peaks[in_range[acf_peaks]]
-if len(acf_peaks) > 0:
-    flash_interval_ms = env_lags_ms[acf_peaks[0]]
-else:   # no clear peak: fall back to the biggest value in the search range
-    flash_interval_ms = env_lags_ms[in_range][np.argmax(env_acf[in_range])]
-
-# 6d. Individual flashes: peaks in the envelope, and their width (duration)
-noise_level = np.median(envelope)
-min_spacing = max(1, int(0.6 * flash_interval_ms * 1e-3 * prf))
-flash_peaks, _ = signal.find_peaks(envelope, height=4 * noise_level, distance=min_spacing)
-if len(flash_peaks) > 0:
-    widths = signal.peak_widths(envelope, flash_peaks, rel_height=0.5)[0]
-    flash_duration_ms = np.median(widths) / prf * 1e3
-else:
-    flash_duration_ms = np.nan
-short_window_ms = NFFT_flash / prf * 1e3
-
-# 6e. Parity. Even blades: the approaching and receding blades flash at the SAME time,
+# 6c. Parity. Even blades: the approaching and receding blades flash at the SAME time,
 #     so the positive and negative Doppler flashes line up. Odd blades: they alternate,
 #     so the negative flashes sit halfway between the positive ones.
 #     Cross-correlate the positive-Doppler and negative-Doppler flash envelopes and see
 #     where the peak is: lag ~0 -> even, lag ~half a period -> odd.
-flash_rate_hz = 1e3 / flash_interval_ms
-ratio = flash_rate_hz / rotor_rate_hz          # ~1 (even, or odd with one side weak), ~2 (odd)
 side_band = np.abs(f_flash) > notch_width_hz / 2
 env_pos = np.sum(10 ** (S_flash_db[(f_flash > 0) & side_band] / 10), axis=0)
 env_neg = np.sum(10 ** (S_flash_db[(f_flash < 0) & side_band] / 10), axis=0)
@@ -261,8 +230,42 @@ lags = np.arange(-(period // 2), period // 2 + 1)
 best_lag = lags[np.argmax(xcorr[centre + lags])]
 pos_neg_offset = abs(best_lag) / period        # 0 -> even, 0.5 -> odd
 parity = "even" if pos_neg_offset < 0.25 else "odd"
-# F_r from the flashes: the flash rate is 1x or 2x F_r, whichever is closer
-rotor_rate_from_flashes_hz = flash_rate_hz / max(1, round(ratio))
+flashes_per_line_period = 1 if parity == "even" else 2
+
+# 6d. Flash interval: sum the short spectrogram power over Doppler to get a
+#     "flash envelope" in time, then autocorrelate it. The line spacing and the
+#     parity tell us roughly where the flash-interval peak must be
+#     (1/F_r for even blades, 1/(2 F_r) for odd), so take the autocorrelation
+#     peak closest to that. This measures it more precisely than the line spacing.
+envelope = np.sum(10 ** (S_flash_db / 10), axis=0)
+env = envelope - np.mean(envelope)
+env_acf = np.correlate(env, env, mode='full')[len(env) - 1:]
+env_acf = env_acf / env_acf[0]
+env_lags_ms = np.arange(len(env_acf)) / prf * 1e3
+expected_interval_ms = 1e3 / (rotor_rate_hz * flashes_per_line_period)
+acf_peaks, _ = signal.find_peaks(env_acf)
+in_range = (env_lags_ms[acf_peaks] >= flash_interval_search_ms[0]) & (env_lags_ms[acf_peaks] <= flash_interval_search_ms[1])
+acf_peaks = acf_peaks[in_range]
+if len(acf_peaks) > 0:
+    flash_interval_ms = env_lags_ms[acf_peaks[np.argmin(np.abs(env_lags_ms[acf_peaks] - expected_interval_ms))]]
+else:
+    flash_interval_ms = expected_interval_ms
+if abs(flash_interval_ms - expected_interval_ms) > 0.15 * expected_interval_ms:
+    print("WARNING: no flash-interval peak near the value expected from the line spacing")
+flash_rate_hz = 1e3 / flash_interval_ms
+ratio = flash_rate_hz / rotor_rate_hz          # should be ~1 (even) or ~2 (odd)
+rotor_rate_from_flashes_hz = flash_rate_hz / flashes_per_line_period
+
+# 6e. Individual flashes: peaks in the envelope, and their width (duration)
+noise_level = np.median(envelope)
+min_spacing = max(1, int(0.6 * flash_interval_ms * 1e-3 * prf))
+flash_peaks, _ = signal.find_peaks(envelope, height=4 * noise_level, distance=min_spacing)
+if len(flash_peaks) > 0:
+    widths = signal.peak_widths(envelope, flash_peaks, rel_height=0.5)[0]
+    flash_duration_ms = np.median(widths) / prf * 1e3
+else:
+    flash_duration_ms = np.nan
+short_window_ms = NFFT_flash / prf * 1e3
 
 # 6f. Tip speed (from B), then rpm and blade length for each blade count
 beta = np.deg2rad(beta_deg)
@@ -290,7 +293,7 @@ lines = [
     f"(>{extent_threshold_db} dB above the noise floor)",
     f"Spectral line spacing F_r: {rotor_rate_hz:.2f} Hz  (+/- {df:.2f} Hz frequency bin)",
     f"Flash interval: {flash_interval_ms:.2f} ms  (+/- {1e3 / prf:.2f} ms sample)  -> flash rate {flash_rate_hz:.2f} Hz",
-    f"Flash rate / F_r = {ratio:.2f}  (2 means odd blades; 1 means even, or odd with one side weak)",
+    f"Flash rate / F_r = {ratio:.2f}  (should be 1 for even blades, 2 for odd)",
     f"Positive vs negative flash offset = {pos_neg_offset:.2f} of a period ({abs(best_lag) / prf * 1e3:.1f} ms)"
     f"  ->  {parity} number of blades  (0 = even, 0.5 = odd)",
     f"Flashes detected: {len(flash_peaks)}, median duration {flash_duration_ms:.2f} ms "
