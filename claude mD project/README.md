@@ -30,3 +30,11 @@ target, carrier, range bin, first slice, body velocity) before running. Differen
    The script prints this crossing time.
 4. `theta_deg = 90`, so tip speed and blade length are lower bounds (true theta ~ heading angle).
 5. Wider body notch (2 m/s) and the full +/- PRF/2 Doppler axis, so aliased lines can be seen.
+
+## Range-Doppler slice figure
+
+`rd_slice_paper_plot.py` plots one RD slice at the same paper size and font as the micro-Doppler
+figures (bistatic range in m vs velocity in m/s, or Doppler in Hz with `y_axis = 'doppler'`).
+Give it the same `slice_under_test`, `num_slices`, `range_bin` and carrier as the micro-Doppler run
+and it plots the slice whose CPI is centred on the micro-Doppler record. Set `rd_slice_to_plot` to
+choose a slice yourself, and `mark_target = True` to circle the target.
