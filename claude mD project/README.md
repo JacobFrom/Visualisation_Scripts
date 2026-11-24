@@ -9,7 +9,7 @@ carrier frequency, range bin, first slice, body velocity, bistatic angle) and ru
 It writes to `<capture directory>/claude_md_figures/`:
 
 - `*_md_long_1024.pdf/.png`: 0.5 s window spectrogram (spectral lines)
-- `*_md_short_8.pdf/.png`: ~4 ms window spectrogram (blade flashes)
+- `*_md_short_64.pdf/.png`: ~31 ms window spectrogram (blade flashes, as in the original script)
 - `*_results.txt`: body Doppler, Doppler extent B, line spacing F_r, flash interval,
   blade parity, tip speed, and rpm / blade length for 2 to 6 blades
 - `*_diagnostics.png`: plots to check each measurement was picked correctly

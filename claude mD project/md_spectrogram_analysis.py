@@ -54,14 +54,17 @@ theta_deg = 90.0             # angle between rotor axis and bisector. ~90 deg fo
 
 # Spectrogram settings
 NFFT_long = 1024             # 0.5 s window -> 2 Hz resolution, shows the spectral lines
-NFFT_short = 8               # ~3.9 ms window -> shows the blade flashes
-nfft_short_padded = 256      # zero padding for the short window so the Doppler axis is smooth
-dynamic_range_db = 40        # colour scale range below the maximum
+NFFT_short = 64              # ~31 ms window -> blade flash figure (same as your original plots)
+NFFT_flash = 16              # ~7.8 ms window, used only to MEASURE the flash interval. Use 8 for propellers
+nfft_short_padded = 256      # zero padding for the short windows so the Doppler axis is smooth
+dynamic_range_db = 25        # colour scale range below the 99.5th percentile (as in your original script)
+doppler_plot_limit_hz = 700  # Doppler axis shown is +/- this. Set to None for the full +/- prf/2
 
 # Search limits for the measurements
 rotor_rate_search_hz = (10, 250)       # where to look for the spectral line spacing F_r
 flash_interval_search_ms = (2, 60)     # where to look for the time between blade flashes
 extent_threshold_db = 10               # Doppler extent = bins this far above the noise floor
+acf_peak_threshold = 0.2               # a flash-envelope autocorrelation peak must be above this to count
 blade_counts_to_test = [2, 3, 4, 5, 6]
 
 # Figure size for the paper. 1.72 in wide fits four panels across a two-column
@@ -70,7 +73,7 @@ fig_width_in = 1.72
 fig_height_in = 1.45
 font_size = 7
 show_colorbar = False        # the 0 to -40 dB range can be stated in the caption instead
-short_plot_seconds = 0.15    # the short-window figure only shows this much time, so the flashes are visible
+short_plot_seconds = 0.5     # the short-window figure only shows this much time, so the flashes are visible
 
 os.makedirs(save_directory, exist_ok=True)
 
@@ -155,11 +158,13 @@ def make_spectrogram(x, nperseg, nfft):
     f = fft.fftshift(f)
     Z = fft.fftshift(Z, axes=0)
     power_db = 20 * np.log10(np.maximum(np.abs(Z), 1e-12))
-    power_db = power_db - np.max(power_db)       # 0 dB = strongest micro-Doppler return
+    # 0 dB = 99.5th percentile, like your original script, so the noise floor sits dark
+    power_db = power_db - np.percentile(power_db, 99.5)
     return f, times, power_db
 
 f_long, t_long, S_long_db = make_spectrogram(notched_slow_time, NFFT_long, NFFT_long)
 f_short, t_short, S_short_db = make_spectrogram(notched_slow_time, NFFT_short, nfft_short_padded)
+f_flash, t_flash, S_flash_db = make_spectrogram(notched_slow_time, NFFT_flash, nfft_short_padded)
 
 # ==========================================
 # 6. Measurements
@@ -190,13 +195,19 @@ rotor_rate_hz = spec_lags_hz[in_range][np.argmax(spec_acf[in_range])]
 
 # 6c. Flash interval: sum the short spectrogram power over Doppler to get a
 #     "flash envelope" in time, then autocorrelate it.
-envelope = np.sum(10 ** (S_short_db / 10), axis=0)
+envelope = np.sum(10 ** (S_flash_db / 10), axis=0)
 env = envelope - np.mean(envelope)
 env_acf = np.correlate(env, env, mode='full')[len(env) - 1:]
 env_acf = env_acf / env_acf[0]
 env_lags_ms = np.arange(len(env_acf)) / prf * 1e3
 in_range = (env_lags_ms >= flash_interval_search_ms[0]) & (env_lags_ms <= flash_interval_search_ms[1])
-flash_interval_ms = env_lags_ms[in_range][np.argmax(env_acf[in_range])]
+# Take the FIRST strong peak, not the biggest one. With an odd number of blades the
+# approaching and receding flashes differ in strength, so the peak at two flash
+# intervals can be bigger than the peak at one.
+acf_peaks, _ = signal.find_peaks(env_acf)
+acf_peaks = acf_peaks[in_range[acf_peaks]]
+strong_peaks = acf_peaks[env_acf[acf_peaks] > acf_peak_threshold]
+flash_interval_ms = env_lags_ms[strong_peaks[0]]
 
 # 6d. Individual flashes: peaks in the envelope, and their width (duration)
 noise_level = np.median(envelope)
@@ -207,7 +218,7 @@ if len(flash_peaks) > 0:
     flash_duration_ms = np.median(widths) / prf * 1e3
 else:
     flash_duration_ms = np.nan
-short_window_ms = NFFT_short / prf * 1e3
+short_window_ms = NFFT_flash / prf * 1e3
 
 # 6e. Parity: flash rate equals F_r for an even blade count and 2 F_r for an odd count
 flash_rate_hz = 1e3 / flash_interval_ms
@@ -274,15 +285,21 @@ def save_paper_spectrogram(times, f, power_db, name, plot_seconds=None):
     fig, ax = plt.subplots(figsize=(fig_width_in, fig_height_in))
     pc = ax.pcolormesh(times, f, power_db, cmap='viridis', shading='auto',
                        vmin=-dynamic_range_db, vmax=0, rasterized=True)
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Doppler (Hz)')
+    ax.set_xlabel('Time (s)', labelpad=1)
+    ax.set_ylabel('Doppler (Hz)', labelpad=1)
+    ax.tick_params(length=2, pad=1)
+    ax.yaxis.set_major_locator(plt.MaxNLocator(5))
+    ax.xaxis.set_major_locator(plt.MaxNLocator(4))
+    ax.set_xlim(times[0], times[-1])
     if plot_seconds is not None:
         ax.set_xlim(times[0], times[0] + plot_seconds)
+    if doppler_plot_limit_hz is not None:
+        ax.set_ylim(-doppler_plot_limit_hz, doppler_plot_limit_hz)
     if show_colorbar:
         fig.colorbar(pc, ax=ax, label='Power (dB)')
-    fig.tight_layout(pad=0.2)
-    fig.savefig(os.path.join(save_directory, name + '.pdf'))
-    fig.savefig(os.path.join(save_directory, name + '.png'), dpi=600)
+    # bbox_inches='tight' trims the white border around the axes
+    fig.savefig(os.path.join(save_directory, name + '.pdf'), bbox_inches='tight', pad_inches=0.01)
+    fig.savefig(os.path.join(save_directory, name + '.png'), dpi=600, bbox_inches='tight', pad_inches=0.01)
     print(f"Saved {name}.pdf and .png in {save_directory}")
 
 base_name = f"{target_tag}_slice_{slice_under_test}_bin_{range_bin}"
@@ -304,8 +321,8 @@ axs[0, 0].set_ylabel('Power (dB)')
 axs[0, 0].set_title('Doppler spectrum of the stitched record (unshifted axis)')
 axs[0, 0].legend()
 
-axs[0, 1].plot(t_short, 10 * np.log10(envelope), lw=0.6)
-axs[0, 1].plot(t_short[flash_peaks], 10 * np.log10(envelope[flash_peaks]), 'rx')
+axs[0, 1].plot(t_flash, 10 * np.log10(envelope), lw=0.6)
+axs[0, 1].plot(t_flash[flash_peaks], 10 * np.log10(envelope[flash_peaks]), 'rx')
 axs[0, 1].set_xlabel('Time (s)')
 axs[0, 1].set_ylabel('Power (dB)')
 axs[0, 1].set_title(f'Flash envelope (short window), {len(flash_peaks)} flashes')
